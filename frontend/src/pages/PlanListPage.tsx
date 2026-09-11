@@ -232,14 +232,17 @@ export function PlanListPage() {
                 <article className="today-metric-card">
                   <span className="today-metric-index">오늘 배송할 집 수</span>
                   <div>
-                    <strong>{todaySummary.totalStops}<em>집</em></strong>
+                    <strong>{todaySummary.totalStops.toLocaleString()}<em>집</em></strong>
                   </div>
                 </article>
                 <article className="today-metric-card is-accented">
                   <span className="today-metric-index">진행률</span>
                   <div>
                     <small>
-                      {(100 -(todaySummary.remainingStops / todaySummary.totalStops * 100)).toFixed(1)}<em>%</em>
+                      {todaySummary.totalStops
+                          ? (100 - (todaySummary.remainingStops / todaySummary.totalStops * 100)).toFixed(1)
+                          : "0.0"}
+                      <em>%</em>
                     </small>
                     <strong>
                       {todaySummary.totalStops - todaySummary.remainingStops}
@@ -247,7 +250,7 @@ export function PlanListPage() {
                         집
                       </em>
                       <small>
-                        <span>잔여 {todaySummary.remainingStops}</span>(전체 {todaySummary.totalStops})
+                        <span>잔여 {todaySummary.remainingStops.toLocaleString()}</span>(전체 {todaySummary.totalStops.toLocaleString()})
                       </small>
                     </strong>
                   </div>
@@ -255,14 +258,20 @@ export function PlanListPage() {
                 <article className="today-metric-card">
                   <span className="today-metric-index">전체 물량</span>
                   <div>
-                    <strong>{todaySummary.totalBoxes}<em>박스</em></strong>
+                    <strong>
+                      {todaySummary.totalBoxes.toLocaleString()}
+                      <em>박스</em>
+                    </strong>
                   </div>
                 </article>
                 <article className="today-metric-card is-accented">
                   <span className="today-metric-index">진행률</span>
                   <div>
                     <small>
-                      {(100 - (todaySummary.remainingBoxes / todaySummary.totalBoxes * 100)).toFixed(1)}<em>%</em>
+                      {todaySummary.totalBoxes > 0
+                          ? (100 - (todaySummary.remainingBoxes / todaySummary.totalBoxes * 100)).toFixed(1)
+                          : "0.0"}
+                      <em>%</em>
                     </small>
                     <strong>
                       {todaySummary.totalBoxes - todaySummary.remainingBoxes}
@@ -270,7 +279,7 @@ export function PlanListPage() {
                         박스
                       </em>
                       <small>
-                         잔여 {todaySummary.remainingBoxes} (전체 {todaySummary.totalBoxes})
+                         잔여 {todaySummary.remainingBoxes.toLocaleString()} (전체 {todaySummary.totalBoxes.toLocaleString()})
                       </small>
                     </strong>
                   </div>

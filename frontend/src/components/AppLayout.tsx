@@ -17,7 +17,6 @@ export function AppLayout() {
           <span className="brand-mark">DI</span>
           <span>
             <strong>Delivery Insight</strong>
-            <small>Weather-aware delivery</small>
           </span>
         </NavLink>
 
