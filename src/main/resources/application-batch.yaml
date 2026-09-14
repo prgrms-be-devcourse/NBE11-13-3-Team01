@@ -1,0 +1,11 @@
+# 배치 인스턴스. 반드시 한 대만 띄운다.
+# 액추에이터 헬스체크를 위해 웹 서버는 유지하되 포트를 분리한다.
+server:
+  port: ${SERVER_PORT:8081}
+
+spring:
+  batch:
+    jdbc:
+      initialize-schema: always # 운영에서는 never로 두고 DDL을 직접 관리
+    job:
+      enabled: false # 기동 시 모든 Job 자동 실행 방지. 스케줄러가 직접 띄운다.
