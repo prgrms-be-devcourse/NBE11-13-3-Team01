@@ -1,7 +1,8 @@
 package com.example.delivery_project.config
 
 import com.example.delivery_project.scheduler.WeatherBatchScheduler
-import com.example.delivery_project.service.DeliveryRiskRefreshService
+import org.springframework.batch.core.job.Job
+import org.springframework.batch.core.launch.JobOperator
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.mock
@@ -48,6 +49,9 @@ class BatchProfileTest {
     @Import(SchedulingConfig::class)
     class SchedulerScanConfiguration {
         @Bean
-        fun deliveryRiskRefreshService(): DeliveryRiskRefreshService = mock()
+        fun jobOperator(): JobOperator = mock()
+
+        @Bean
+        fun weatherRefreshJob(): Job = mock()
     }
 }
