@@ -22,6 +22,34 @@ export interface DriverSummary {
   name: string
 }
 
+export interface DriverLocation {
+  driverId: number
+  driverLoginId: string
+  driverName: string
+  latitude: number
+  longitude: number
+  updatedAt: string
+}
+
+export interface UpdateDriverLocationRequest {
+  latitude: number
+  longitude: number
+}
+
+export interface AdminDeliveryStatistics {
+  totalPlans: number
+  readyPlans: number
+  deliveringPlans: number
+  completedPlans: number
+  totalStops: number
+  remainingStops: number
+  completedStops: number
+  totalBoxes: number
+  remainingBoxes: number
+  deliveredBoxes: number
+  dangerStops: number
+}
+
 export interface DeliveryPlanSummary {
   planId: number
   departureLocation: string

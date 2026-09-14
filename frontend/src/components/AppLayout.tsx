@@ -1,5 +1,6 @@
 import { NavLink, Outlet, useNavigate } from 'react-router'
 import { useAuth } from '../auth/AuthContext'
+import { DriverLocationTracker } from './DriverLocationTracker'
 
 export function AppLayout() {
   const { user, logout } = useAuth()
@@ -30,6 +31,7 @@ export function AppLayout() {
         </nav>
 
         <div className="user-menu">
+          {user?.role === 'ROLE_DELIVERY_DRIVER' && <DriverLocationTracker />}
           <div className="user-copy">
             <strong>{user?.name}</strong>
             <span>{user?.loginId}</span>

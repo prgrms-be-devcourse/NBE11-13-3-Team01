@@ -2550,12 +2550,314 @@ select:focus-visible {
   }
 }
 
+.location-tracker {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.location-tracker i,
+.live-refresh-label i,
+.driver-location-list article > i {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: #9aa39d;
+}
+
+.location-tracker-synced {
+  border-color: #b8deca;
+  background: #effaf3;
+  color: #216843;
+}
+
+.location-tracker-synced i,
+.live-refresh-label i,
+.driver-location-list article > i {
+  background: #25a867;
+  box-shadow: 0 0 0 4px rgb(37 168 103 / 12%);
+}
+
+.location-tracker-syncing i {
+  background: #dd941a;
+  animation: live-pulse 1s ease-in-out infinite;
+}
+
+.location-tracker-blocked,
+.location-tracker-failed {
+  border-color: #efc6c0;
+  background: #fff5f3;
+  color: #a63c31;
+}
+
+.location-tracker-blocked i,
+.location-tracker-failed i {
+  background: #cf4b3e;
+}
+
+.admin-statistics,
+.driver-location-section {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  background: var(--surface);
+  box-shadow: var(--shadow-soft);
+}
+
+.admin-statistics-heading,
+.driver-location-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 24px 26px 18px;
+}
+
+.admin-statistics-heading h2,
+.driver-location-heading h2 {
+  margin: 4px 0 0;
+  font-size: 22px;
+}
+
+.admin-statistics-heading > span,
+.live-refresh-label {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.admin-statistics-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border-top: 1px solid var(--line);
+}
+
+.admin-statistics-grid article {
+  display: flex;
+  min-height: 138px;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+  padding: 22px 24px;
+  border-right: 1px solid var(--line);
+}
+
+.admin-statistics-grid article:last-child {
+  border-right: 0;
+}
+
+.admin-statistics-grid article > span,
+.admin-statistics-grid small {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.admin-statistics-grid strong {
+  color: var(--text);
+  font-size: 32px;
+  line-height: 1.1;
+}
+
+.admin-statistics-grid strong em {
+  margin-left: 5px;
+  color: var(--muted);
+  font-size: 14px;
+  font-style: normal;
+}
+
+.admin-statistics-grid .is-danger strong {
+  color: var(--red);
+}
+
+.live-refresh-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.driver-location-map-wrap {
+  position: relative;
+  border-top: 1px solid var(--line);
+}
+
+.driver-location-map {
+  z-index: 0;
+  width: 100%;
+  height: 380px;
+}
+
+.driver-location-empty {
+  position: absolute;
+  z-index: 500;
+  top: 50%;
+  left: 50%;
+  display: flex;
+  width: min(360px, calc(100% - 32px));
+  flex-direction: column;
+  gap: 6px;
+  padding: 18px 20px;
+  transform: translate(-50%, -50%);
+  border: 1px solid rgb(255 255 255 / 75%);
+  border-radius: 15px;
+  background: rgb(255 255 255 / 92%);
+  box-shadow: 0 12px 35px rgb(31 53 42 / 14%);
+  text-align: center;
+  backdrop-filter: blur(8px);
+}
+
+.driver-location-empty span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.driver-location-marker-shell {
+  background: transparent;
+  border: 0;
+}
+
+.driver-location-marker {
+  position: relative;
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border: 4px solid #fff;
+  border-radius: 50% 50% 50% 4px;
+  background: #1f704d;
+  box-shadow: 0 5px 14px rgb(21 62 44 / 34%);
+  transform: rotate(-45deg);
+}
+
+.driver-location-marker i {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #fff;
+}
+
+.driver-location-popup {
+  display: flex;
+  min-width: 150px;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.driver-location-popup span,
+.driver-location-popup small {
+  color: var(--muted);
+}
+
+.driver-location-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  border-top: 1px solid var(--line);
+  background: var(--line);
+}
+
+.driver-location-list article {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  background: var(--surface);
+}
+
+.driver-location-list article div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.driver-location-list article span,
+.driver-location-list article small {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@keyframes live-pulse {
+  50% {
+    opacity: 0.35;
+    transform: scale(0.8);
+  }
+}
+
+@media (max-width: 960px) {
+  .admin-statistics-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .admin-statistics-grid article:nth-child(2) {
+    border-right: 0;
+  }
+
+  .admin-statistics-grid article:nth-child(-n + 2) {
+    border-bottom: 1px solid var(--line);
+  }
+
+  .driver-location-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 680px) {
+  .location-tracker span {
+    display: none;
+  }
+
+  .location-tracker {
+    padding: 9px;
+  }
+
+  .admin-statistics-heading,
+  .driver-location-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .admin-statistics-grid,
+  .driver-location-list {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-statistics-grid article {
+    min-height: 112px;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .admin-statistics-grid article:last-child {
+    border-bottom: 0;
+  }
+
+  .driver-location-map {
+    height: 310px;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .sortable-stop-card,
   .sortable-stop-card.just-moved .stop-card-content,
   .route-map-marker.recommended-marker,
   .recommended-stop-card .stop-card-content {
     transition: none !important;
+    animation: none !important;
+  }
+
+  .location-tracker-syncing i {
     animation: none !important;
   }
 }

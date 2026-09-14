@@ -5,8 +5,11 @@ import type {
   CreateDeliveryPlanResponse,
   DeliveryPlanDetail,
   DeliveryPlanSummary,
+  DriverLocation,
   DriverSummary,
+  AdminDeliveryStatistics,
   NextStopRecommendation,
+  UpdateDriverLocationRequest,
 } from '../types/api'
 import { apiRequest } from './client'
 
@@ -36,6 +39,25 @@ export function getAdminDeliveryPlan(planId: number) {
 
 export function getDrivers() {
   return apiRequest<DriverSummary[]>('/api/admin/drivers')
+}
+
+export function updateMyDriverLocation(request: UpdateDriverLocationRequest) {
+  return apiRequest<DriverLocation>('/api/drivers/me/location', {
+    method: 'PUT',
+    body: JSON.stringify(request),
+  })
+}
+
+export function getMyDriverLocation() {
+  return apiRequest<DriverLocation>('/api/drivers/me/location')
+}
+
+export function getDriverLocations() {
+  return apiRequest<DriverLocation[]>('/api/admin/drivers/locations')
+}
+
+export function getDeliveryStatistics() {
+  return apiRequest<AdminDeliveryStatistics>('/api/admin/delivery-plans/statistics')
 }
 
 export function createAssignedDeliveryPlan(
