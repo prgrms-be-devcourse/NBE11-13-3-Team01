@@ -5,3 +5,9 @@ scrape_configs:
     metrics_path: '/actuator/prometheus'
     static_configs:
       - targets: ['host.docker.internal:8080']
+
+  # 선택: docker compose --profile db-metrics up -d 로 띄웠을 때만 응답한다.
+  # 띄우지 않으면 이 타깃은 down 으로 표시되며, 앱 지표 수집에는 영향이 없다.
+  - job_name: 'mysql'
+    static_configs:
+      - targets: ['mysql-exporter:9104']

@@ -1,0 +1,33 @@
+
+         /\      Grafana   /‾‾/  
+    /\  /  \     |\  __   /  /   
+   /  \/    \    | |/ /  /   ‾‾\ 
+  /          \   |   (  |  (‾)  |
+ / __________ \  |_|\_\  \_____/ 
+
+
+     execution: local
+        script: ./k6/claim-contention.js
+        output: Prometheus remote write (http://localhost:9090/api/v1/write)
+
+     scenarios: (100.00%) 1 scenario, 1000 max VUs, 4m30s max duration (incl. graceful stop):
+              * stress: Up to 1000 looping VUs for 4m15s over 9 stages (gracefulRampDown: 15s, gracefulStop: 30s)
+
+
+Run      [ 100% ] setup()
+stress   [   0% ]
+
+Run      [ 100% ] setup()
+stress   [   0% ]
+
+Run      [ 100% ] setup()
+stress   [   0% ]
+
+Run      [ 100% ] setup()
+stress   [   0% ]
+
+Run      [ 100% ] setup()
+stress   [   0% ]
+
+Run      [ 100% ] setup()
+stress   [   0% ]

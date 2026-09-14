@@ -38,3 +38,7 @@ out/
 .vscode/
 ### macOS ###
 .DS_Store
+
+# k6 실행 결과물
+k6/summary.md
+k6/summary.json

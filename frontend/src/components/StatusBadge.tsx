@@ -1,6 +1,7 @@
 import type { DeliveryPlanStatus, DeliveryStopStatus, RiskLevel } from '../types/api'
 
 const STATUS_LABEL: Record<DeliveryPlanStatus | DeliveryStopStatus, string> = {
+  OPEN: '수령 대기',
   READY: '배송 준비',
   DELIVERING: '배송 중',
   COMPLETED: '배송 완료',

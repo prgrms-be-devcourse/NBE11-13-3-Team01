@@ -9,6 +9,7 @@ import com.example.delivery_project.dto.response.AdminDeliveryStatisticsResponse
 import com.example.delivery_project.enums.ProductType
 import com.example.delivery_project.service.AdminDeliveryPlanService
 import com.example.delivery_project.service.DeliveryPlanCreationFacade
+import com.example.delivery_project.service.DriverRecommendationService
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.mock
@@ -20,7 +21,12 @@ import java.time.LocalDateTime
 class AdminDeliveryPlanControllerTest {
     private val adminDeliveryPlanService = mock<AdminDeliveryPlanService>()
     private val deliveryPlanCreationFacade = mock<DeliveryPlanCreationFacade>()
-    private val controller = AdminDeliveryPlanController(adminDeliveryPlanService, deliveryPlanCreationFacade)
+    private val driverRecommendationService = mock<DriverRecommendationService>()
+    private val controller = AdminDeliveryPlanController(
+        adminDeliveryPlanService,
+        deliveryPlanCreationFacade,
+        driverRecommendationService,
+    )
 
     @Test
     fun `관리자는 전체 배송계획과 상세를 조회한다`() {

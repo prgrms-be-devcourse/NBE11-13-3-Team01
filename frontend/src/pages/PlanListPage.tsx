@@ -26,10 +26,22 @@ type PlanRow = DeliveryPlanSummary | AdminDeliveryPlanSummary
 type PlanView = 'current' | 'completed'
 
 interface DriverPlanGroup {
-  driverId: number
-  driverLoginId: string
-  driverName: string
+  // 미배정(OPEN) 업무는 기사가 없으므로 별도 그룹으로 모은다.
+  key: string
+  driverId: number | null
+  driverLoginId: string | null
+  driverName: string | null
   plans: AdminDeliveryPlanSummary[]
+}
+
+const UNASSIGNED_GROUP_KEY = 'unassigned'
+
+function driverGroupKey(driverId: number | null) {
+  return driverId === null ? UNASSIGNED_GROUP_KEY : String(driverId)
+}
+
+function driverGroupLabel(group: DriverPlanGroup) {
+  return group.driverId === null ? '미배정' : group.driverName ?? '이름 없음'
 }
 
 interface PlanDateGroup {
@@ -214,33 +226,39 @@ export function PlanListPage() {
   }).format(new Date())
 
   const driverGroups = useMemo(() => {
-    const groups = new Map<number, DriverPlanGroup>()
+    const groups = new Map<string, DriverPlanGroup>()
 
     plans.forEach((plan) => {
       if (!isAdminPlan(plan)) return
 
-      const group = groups.get(plan.driverId)
+      const driverId = plan.driverId ?? null
+      const key = driverGroupKey(driverId)
+      const group = groups.get(key)
       if (group) {
         group.plans.push(plan)
         return
       }
 
-      groups.set(plan.driverId, {
-        driverId: plan.driverId,
-        driverLoginId: plan.driverLoginId,
-        driverName: plan.driverName,
+      groups.set(key, {
+        key,
+        driverId,
+        driverLoginId: plan.driverLoginId ?? null,
+        driverName: plan.driverName ?? null,
         plans: [plan],
       })
     })
 
-    return [...groups.values()].sort((left, right) => (
-      left.driverId - right.driverId
-    ))
+    // 미배정 그룹을 맨 앞에 두어 수령 대기 중인 업무를 먼저 보여준다.
+    return [...groups.values()].sort((left, right) => {
+      if (left.driverId === null) return -1
+      if (right.driverId === null) return 1
+      return left.driverId - right.driverId
+    })
   }, [plans])
 
-  const [selectedDriverId, setSelectedDriverId] = useState<number | null>(null)
+  const [selectedDriverKey, setSelectedDriverKey] = useState<string | null>(null)
   const selectedDriver = driverGroups.find((group) => (
-    group.driverId === selectedDriverId
+    group.key === selectedDriverKey
   )) ?? driverGroups[0] ?? null
   const selectedPlans = isAdmin
     ? selectedDriver?.plans ?? []
@@ -462,7 +480,7 @@ export function PlanListPage() {
               </div>
               <div className="driver-filter-tabs" role="tablist" aria-label="배송 기사 선택">
                 {driverGroups.map((group, index) => {
-                  const isSelected = group.driverId === selectedDriver.driverId
+                  const isSelected = group.key === selectedDriver.key
                   const activeCount = group.plans.filter((plan) => (
                     plan.status !== 'COMPLETED'
                   )).length
@@ -472,17 +490,19 @@ export function PlanListPage() {
                     <button
                       type="button"
                       role="tab"
-                      id={`driver-tab-${group.driverId}`}
+                      id={`driver-tab-${group.key}`}
                       aria-controls="selected-driver-plans"
                       aria-selected={isSelected}
                       className={`driver-filter-button${isSelected ? ' is-active' : ''}`}
-                      key={group.driverId}
-                      onClick={() => setSelectedDriverId(group.driverId)}
-                      aria-label={`기사 ${index + 1}, 진행 및 예정 ${activeCount}건, 배송 완료 ${completedCount}건`}
+                      key={group.key}
+                      onClick={() => setSelectedDriverKey(group.key)}
+                      aria-label={group.driverId === null
+                        ? `미배정 업무, 수령 대기 ${activeCount}건`
+                        : `기사 ${index + 1}, 진행 및 예정 ${activeCount}건, 배송 완료 ${completedCount}건`}
                     >
-                      <span className="driver-filter-order">{group.driverName}</span>
+                      <span className="driver-filter-order">{driverGroupLabel(group)}</span>
                       <span className="driver-filter-identity">
-                        <strong>{maskLoginId(group.driverLoginId)}</strong>
+                        <strong>{group.driverId === null ? '수령 대기' : maskLoginId(group.driverLoginId)}</strong>
                         <small>예정 {activeCount}건, 완료 {completedCount}건, 총 {activeCount + completedCount}건</small>
                       </span>
                       <span className="driver-filter-count">
@@ -501,7 +521,7 @@ export function PlanListPage() {
             id={isAdmin ? 'selected-driver-plans' : undefined}
             role={isAdmin ? 'tabpanel' : undefined}
             aria-labelledby={isAdmin && selectedDriver
-              ? `driver-tab-${selectedDriver.driverId}`
+              ? `driver-tab-${selectedDriver.key}`
               : undefined}
             aria-label={isAdmin ? undefined : '배송 계획 목록'}
           >
@@ -577,9 +597,13 @@ export function PlanListPage() {
                                   : '출발 예정'}
                             </p>
                             {isAdminPlan(plan) && (
-                              <p className="plan-driver">
-                                담당 · <strong>{maskName(plan.driverName)}</strong> ({maskLoginId(plan.driverLoginId)})
-                              </p>
+                              plan.driverId === null ? (
+                                <p className="plan-driver">담당 · <strong>미배정</strong> (기사 수령 대기)</p>
+                              ) : (
+                                <p className="plan-driver">
+                                  담당 · <strong>{maskName(plan.driverName)}</strong> ({maskLoginId(plan.driverLoginId)})
+                                </p>
+                              )
                             )}
                           </div>
                         </div>

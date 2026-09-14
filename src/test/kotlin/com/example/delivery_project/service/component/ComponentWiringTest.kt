@@ -1,7 +1,16 @@
 package com.example.delivery_project.service.component
 
+import com.example.delivery_project.config.DeliveryClaimProperties
+import com.example.delivery_project.config.DriverRecommendationProperties
+import com.example.delivery_project.config.PriorityWindowProperties
 import com.example.delivery_project.config.RestControllerConfig
+import com.example.delivery_project.domain.repository.DeliveryPlanPriorityDriverRepository
+import com.example.delivery_project.domain.repository.DriverLocationRepository
+import com.example.delivery_project.domain.repository.UserRepository
 import com.example.delivery_project.domain.repository.WeatherRepository
+import com.example.delivery_project.service.component.recommendation.DriverCandidateLoader
+import com.example.delivery_project.service.component.recommendation.DriverRecommender
+import com.example.delivery_project.service.component.recommendation.PriorityWindowAssigner
 import com.example.delivery_project.service.component.route.DijkstraRouteOptimizer
 import com.example.delivery_project.service.component.route.RouteOptimizer
 import org.assertj.core.api.Assertions.assertThat
@@ -36,6 +45,9 @@ class ComponentWiringTest {
             assertThat(context).hasSingleBean(WeatherUpdater::class.java)
             assertThat(context).hasSingleBean(RiskFactorCalculator::class.java)
             assertThat(context).hasSingleBean(DemoRiskScenarioPolicy::class.java)
+            assertThat(context).hasSingleBean(DriverRecommender::class.java)
+            assertThat(context).hasSingleBean(DriverCandidateLoader::class.java)
+            assertThat(context).hasSingleBean(PriorityWindowAssigner::class.java)
 
             assertThat(context.getBean(RouteOptimizer::class.java))
                 .isInstanceOf(DijkstraRouteOptimizer::class.java)
@@ -60,5 +72,26 @@ class ComponentWiringTest {
     class ComponentConfiguration {
         @Bean
         fun weatherRepository(): WeatherRepository = mock(WeatherRepository::class.java)
+
+        // service.component.recommendation 하위 패키지도 함께 스캔되므로
+        // 추천·우선권 컴포넌트가 요구하는 설정과 리포지토리 빈을 함께 등록한다.
+        @Bean
+        fun driverRecommendationProperties(): DriverRecommendationProperties = DriverRecommendationProperties()
+
+        @Bean
+        fun priorityWindowProperties(): PriorityWindowProperties = PriorityWindowProperties()
+
+        @Bean
+        fun deliveryClaimProperties(): DeliveryClaimProperties = DeliveryClaimProperties()
+
+        @Bean
+        fun userRepository(): UserRepository = mock(UserRepository::class.java)
+
+        @Bean
+        fun driverLocationRepository(): DriverLocationRepository = mock(DriverLocationRepository::class.java)
+
+        @Bean
+        fun deliveryPlanPriorityDriverRepository(): DeliveryPlanPriorityDriverRepository =
+            mock(DeliveryPlanPriorityDriverRepository::class.java)
     }
 }

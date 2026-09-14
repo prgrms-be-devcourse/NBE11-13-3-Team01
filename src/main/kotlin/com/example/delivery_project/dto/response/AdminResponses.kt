@@ -9,15 +9,15 @@ import java.time.LocalDateTime
 
 data class AdminDeliveryPlanDetailResponse(
     val driverId: Long?,
-    val driverLoginId: String,
-    val driverName: String,
+    val driverLoginId: String?,
+    val driverName: String?,
     val deliveryPlan: DeliveryPlanDetailResponse,
 ) {
     companion object {
         fun from(plan: DeliveryPlan) = AdminDeliveryPlanDetailResponse(
-            plan.driver.id,
-            plan.driver.loginId,
-            plan.driver.name,
+            plan.driver?.id,
+            plan.driver?.loginId,
+            plan.driver?.name,
             DeliveryPlanDetailResponse.from(plan),
         )
     }
@@ -26,10 +26,11 @@ data class AdminDeliveryPlanDetailResponse(
 data class AdminDeliveryPlanSummaryResponse(
     val planId: Long?,
     val driverId: Long?,
-    val driverLoginId: String,
-    val driverName: String,
+    val driverLoginId: String?,
+    val driverName: String?,
     val departureLocation: String,
     val scheduledDepartureAt: LocalDateTime,
+    val assignedAt: LocalDateTime?,
     val actualDepartureAt: LocalDateTime?,
     val completedAt: LocalDateTime?,
     val status: DeliveryPlanStatus,
@@ -42,10 +43,10 @@ data class AdminDeliveryPlanSummaryResponse(
     companion object {
         fun from(summary: DeliveryPlanSummaryProjection) = AdminDeliveryPlanSummaryResponse(
             summary.planId, summary.driverId, summary.driverLoginId, summary.driverName,
-            summary.departureLocation, summary.scheduledDepartureAt, summary.actualDepartureAt,
-            summary.completedAt, DeliveryPlanStatus.valueOf(summary.status), summary.totalStops.toInt(),
-            summary.remainingStops.toLong(), summary.totalBoxes.toLong(), summary.remainingBoxes.toLong(),
-            summary.dangerStops.toLong(),
+            summary.departureLocation, summary.scheduledDepartureAt, summary.assignedAt,
+            summary.actualDepartureAt, summary.completedAt, DeliveryPlanStatus.valueOf(summary.status),
+            summary.totalStops.toInt(), summary.remainingStops.toLong(), summary.totalBoxes.toLong(),
+            summary.remainingBoxes.toLong(), summary.dangerStops.toLong(),
         )
     }
 }
@@ -62,6 +63,7 @@ data class DriverSummaryResponse(
 
 data class AdminDeliveryStatisticsResponse(
     val totalPlans: Long,
+    val openPlans: Long,
     val readyPlans: Long,
     val deliveringPlans: Long,
     val completedPlans: Long,
@@ -82,6 +84,7 @@ data class AdminDeliveryStatisticsResponse(
 
             return AdminDeliveryStatisticsResponse(
                 totalPlans = statistics.totalPlans.toLong(),
+                openPlans = statistics.openPlans.toLong(),
                 readyPlans = statistics.readyPlans.toLong(),
                 deliveringPlans = statistics.deliveringPlans.toLong(),
                 completedPlans = statistics.completedPlans.toLong(),

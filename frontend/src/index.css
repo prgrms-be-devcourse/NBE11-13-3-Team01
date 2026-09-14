@@ -959,6 +959,11 @@ select:focus-visible {
   white-space: nowrap;
 }
 
+.status-open {
+  color: #4a5a76;
+  background: #e6ecf6;
+}
+
 .status-ready {
   color: #5d5a3c;
   background: #f3f0dd;
@@ -2860,4 +2865,250 @@ select:focus-visible {
   .location-tracker-syncing i {
     animation: none !important;
   }
+}
+
+/* ------------------------------------------------------------------
+   배송 업무 마켓 (선착순 수령 + 우선 수령 윈도우)
+   ------------------------------------------------------------------ */
+
+.market-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 18px;
+}
+
+.market-card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 22px 24px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--surface);
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.market-card:hover {
+  border-color: #a9bcae;
+  box-shadow: var(--shadow);
+}
+
+/* 우선 수령 구간이라 아직 가져갈 수 없는 업무는 시각적으로 낮춘다. */
+.market-card.is-locked {
+  background: var(--surface-soft);
+  border-style: dashed;
+}
+
+.market-card.is-locked:hover {
+  box-shadow: none;
+}
+
+.market-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.market-card-head h2 {
+  margin: 4px 0 2px;
+  font-size: 17px;
+  line-height: 1.35;
+}
+
+.priority-badge {
+  color: var(--green-dark);
+  background: var(--lime);
+  flex-shrink: 0;
+}
+
+.market-card-stats {
+  display: flex;
+  gap: 22px;
+  margin: 0;
+  padding: 14px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.market-card-stats div {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.market-card-stats dt {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.market-card-stats dd {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.market-card-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.market-card-hint {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.market-card-hint.priority-hint {
+  color: var(--green-dark);
+}
+
+.assign-mode-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.assign-mode-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  cursor: pointer;
+  transition: border-color 160ms ease, background 160ms ease;
+}
+
+.assign-mode-option.is-active {
+  border-color: var(--green);
+  background: var(--green-soft);
+}
+
+.assign-mode-option span {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.assign-mode-option small {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+/* ------------------------------------------------------------------
+   배송 기사 추천 패널
+   ------------------------------------------------------------------ */
+
+.recommendation-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.recommendation-item {
+  padding: 18px 20px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface-soft);
+}
+
+.recommendation-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.recommendation-head > div {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.recommendation-rank {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--green-dark);
+  background: var(--green-soft);
+}
+
+.recommendation-login {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.recommendation-score {
+  font-size: 20px;
+  font-weight: 900;
+  color: var(--green-dark);
+}
+
+.recommendation-meter {
+  height: 6px;
+  margin: 10px 0 12px;
+  border-radius: 999px;
+  background: #e4eae2;
+  overflow: hidden;
+}
+
+.recommendation-meter span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--green);
+}
+
+.recommendation-reasons {
+  margin: 0 0 12px;
+  padding-left: 18px;
+  font-size: 12.5px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.recommendation-features {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+
+.recommendation-features div {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.recommendation-features dt {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.recommendation-features dd {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 4px 0 0;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.recommendation-features small {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--green);
 }

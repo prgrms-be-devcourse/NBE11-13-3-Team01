@@ -92,6 +92,7 @@ class AdminDeliveryPlanServiceTest {
     fun 배송계획_배송지_상품_위험_통계를_반환한다() {
         whenever(deliveryPlanRepository.getDeliveryStatistics()).thenReturn(deliveryStatistics)
         whenever(deliveryStatistics.totalPlans).thenReturn(10L)
+        whenever(deliveryStatistics.openPlans).thenReturn(0L)
         whenever(deliveryStatistics.readyPlans).thenReturn(3L)
         whenever(deliveryStatistics.deliveringPlans).thenReturn(2L)
         whenever(deliveryStatistics.completedPlans).thenReturn(5L)

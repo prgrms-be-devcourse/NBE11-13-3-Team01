@@ -39,6 +39,7 @@ class DeliveryPlanControllerTest {
             10L,
             "서울 물류센터",
             LocalDateTime.now().plusHours(1),
+            LocalDateTime.now(),
             null,
             null,
             DeliveryPlanStatus.READY,

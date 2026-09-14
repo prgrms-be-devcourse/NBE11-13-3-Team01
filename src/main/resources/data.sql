@@ -15,6 +15,7 @@ DROP TABLE IF EXISTS risk_factor;
 DROP TABLE IF EXISTS risk_assessment;
 DROP TABLE IF EXISTS delivery_item;
 DROP TABLE IF EXISTS delivery_stop;
+DROP TABLE IF EXISTS delivery_plan_priority_driver;
 DROP TABLE IF EXISTS delivery_plan;
 DROP TABLE IF EXISTS driver_location;
 -- 기존 RDB Refresh Token 테이블 제거용
@@ -113,21 +114,52 @@ VALUES
 -- ------------------------------------------------------------
 CREATE TABLE delivery_plan (
                                id                      BIGINT AUTO_INCREMENT PRIMARY KEY,
-                               driver_id               BIGINT       NOT NULL,
+                               -- 관리자가 등록한 직후에는 수령한 기사가 없으므로 NULL 을 허용한다.
+                               driver_id               BIGINT       NULL,
                                departure_location      VARCHAR(255) NOT NULL,
                                departure_latitude      DOUBLE       NOT NULL,
                                departure_longitude     DOUBLE       NOT NULL,
                                scheduled_departure_at  DATETIME(6),
+                               assigned_at             DATETIME(6),
+                               -- 전체 공개 시각. NULL 이면 우선권 없이 처음부터 전체 공개된 업무다.
+                               public_at               DATETIME(6),
                                actual_departure_at     DATETIME(6),
                                status                  VARCHAR(30)  NOT NULL,
                                created_at              DATETIME(6)  NOT NULL,
                                completed_at            DATETIME(6),
+                               version                 BIGINT       NOT NULL DEFAULT 0,
                                CONSTRAINT fk_delivery_plan_driver
                                    FOREIGN KEY (driver_id) REFERENCES users (id)
 ) ENGINE=InnoDB;
 
 CREATE INDEX idx_delivery_plan_driver_created
     ON delivery_plan (driver_id, created_at);
+
+-- 미배정(OPEN) 업무 목록 조회용
+CREATE INDEX idx_delivery_plan_status_scheduled
+    ON delivery_plan (status, scheduled_departure_at);
+
+-- 기사별 진행 중 업무 수 집계용
+CREATE INDEX idx_delivery_plan_driver_status
+    ON delivery_plan (driver_id, status);
+
+-- ------------------------------------------------------------
+-- delivery_plan_priority_driver
+-- 공개 시각 전까지 해당 업무를 수령할 수 있는 추천 상위 기사 목록
+-- ------------------------------------------------------------
+CREATE TABLE delivery_plan_priority_driver (
+    id               BIGINT AUTO_INCREMENT PRIMARY KEY,
+    delivery_plan_id BIGINT NOT NULL,
+    driver_id        BIGINT NOT NULL,
+    priority_rank    INT    NOT NULL,
+    score            INT    NOT NULL,
+    CONSTRAINT uk_plan_priority_driver UNIQUE (delivery_plan_id, driver_id),
+    CONSTRAINT fk_plan_priority_plan
+        FOREIGN KEY (delivery_plan_id) REFERENCES delivery_plan (id),
+    CONSTRAINT fk_plan_priority_driver
+        FOREIGN KEY (driver_id) REFERENCES users (id),
+    INDEX idx_plan_priority_driver (delivery_plan_id, driver_id)
+) ENGINE=InnoDB;
 
 -- ------------------------------------------------------------
 -- delivery_stop
