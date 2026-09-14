@@ -1,6 +1,6 @@
 -- ============================================================
 -- delivery_service DB 및 테이블 생성 스크립트
--- 엔티티 기준: User, DeliveryPlan, DeliveryStop, DeliveryItem,
+-- 엔티티 기준: User, DriverLocation, DeliveryPlan, DeliveryStop, DeliveryItem,
 --             RiskAssessment, RiskFactor, Weather
 -- ============================================================
 
@@ -16,6 +16,7 @@ DROP TABLE IF EXISTS risk_assessment;
 DROP TABLE IF EXISTS delivery_item;
 DROP TABLE IF EXISTS delivery_stop;
 DROP TABLE IF EXISTS delivery_plan;
+DROP TABLE IF EXISTS driver_location;
 -- 기존 RDB Refresh Token 테이블 제거용
 DROP TABLE IF EXISTS refresh_token;
 DROP TABLE IF EXISTS users;
@@ -83,6 +84,29 @@ VALUES
         '기사3',
         'ROLE_DELIVERY_DRIVER'
     );
+
+-- ------------------------------------------------------------
+-- driver_location (기사별 최신 위치 한 건)
+-- ------------------------------------------------------------
+CREATE TABLE driver_location (
+                                 id          BIGINT AUTO_INCREMENT PRIMARY KEY,
+                                 driver_id   BIGINT      NOT NULL,
+                                 latitude    DOUBLE      NOT NULL,
+                                 longitude   DOUBLE      NOT NULL,
+                                 updated_at  DATETIME(6) NOT NULL,
+                                 CONSTRAINT uk_driver_location_driver UNIQUE (driver_id),
+                                 CONSTRAINT fk_driver_location_driver
+                                     FOREIGN KEY (driver_id) REFERENCES users (id)
+) ENGINE=InnoDB;
+
+CREATE INDEX idx_driver_location_updated_at
+    ON driver_location (updated_at);
+
+INSERT INTO driver_location (driver_id, latitude, longitude, updated_at)
+VALUES
+    (2, 37.5665, 126.9780, CURRENT_TIMESTAMP(6)),
+    (3, 37.5651, 126.9895, CURRENT_TIMESTAMP(6)),
+    (4, 37.5700, 126.9920, CURRENT_TIMESTAMP(6));
 
 -- ------------------------------------------------------------
 -- delivery_plan
@@ -637,4 +661,3 @@ select * from risk_assessment;
 select * from delivery_stop;
 select * from delivery_plan;
 select * from weather;
-

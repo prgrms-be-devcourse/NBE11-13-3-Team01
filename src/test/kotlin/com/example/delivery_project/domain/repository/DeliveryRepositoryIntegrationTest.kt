@@ -2,6 +2,7 @@ package com.example.delivery_project.domain.repository
 
 import com.example.delivery_project.domain.entity.delivery.DeliveryPlanFactory
 import com.example.delivery_project.domain.entity.user.User
+import com.example.delivery_project.domain.entity.user.DriverLocation
 import com.example.delivery_project.domain.entity.weather.Weather
 import com.example.delivery_project.dto.response.DeliveryPlanDetailResponse
 import com.example.delivery_project.enums.DeliveryStopStatus
@@ -38,6 +39,9 @@ class DeliveryRepositoryIntegrationTest {
 
     @Autowired
     private lateinit var deliveryPlanRepository: DeliveryPlanRepository
+
+    @Autowired
+    private lateinit var driverLocationRepository: DriverLocationRepository
 
     @Autowired
     private lateinit var deliveryStopRepository: DeliveryStopRepository
@@ -182,5 +186,36 @@ class DeliveryRepositoryIntegrationTest {
             assertThat(stop.riskAssessment.factors).hasSize(1)
         }
         assertThat(statistics.prepareStatementCount).isEqualTo(3L)
+    }
+
+    @Test
+    fun `기사 최신 위치와 관리자 배송 통계를 조회한다`() {
+        val driver = userRepository.save(
+            User.of("tracking-driver", "password", "위치기사", Role.ROLE_DELIVERY_DRIVER),
+        )
+        val location = driverLocationRepository.saveAndFlush(
+            DriverLocation.create(driver, 37.5665, 126.9780, LocalDateTime.now()),
+        )
+        val plan = DeliveryPlanFactory.create(
+            driver,
+            Location("서울 물류센터", 37.50, 126.90),
+            LocalDateTime.now().plusHours(1),
+        )
+        plan.addStop("서울시청", 37.51, 126.91, LocalDateTime.now())
+            .addItem("상품", ProductType.NORMAL, 3)
+        deliveryPlanRepository.saveAndFlush(plan)
+        entityManager.clear()
+
+        val savedLocation = requireNotNull(driverLocationRepository.findByDriverId(requireNotNull(driver.id)))
+        assertThat(savedLocation.id).isEqualTo(location.id)
+        assertThat(driverLocationRepository.findAllWithDriverOrderByUpdatedAtDesc()).hasSize(1)
+
+        val statistics = deliveryPlanRepository.getDeliveryStatistics()
+        assertThat(statistics.totalPlans.toLong()).isEqualTo(1L)
+        assertThat(statistics.readyPlans.toLong()).isEqualTo(1L)
+        assertThat(statistics.totalStops.toLong()).isEqualTo(1L)
+        assertThat(statistics.remainingStops.toLong()).isEqualTo(1L)
+        assertThat(statistics.totalBoxes.toLong()).isEqualTo(3L)
+        assertThat(statistics.remainingBoxes.toLong()).isEqualTo(3L)
     }
 }

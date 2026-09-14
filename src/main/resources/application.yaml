@@ -5,6 +5,8 @@ spring:
     url: ${DB_URL:jdbc:mysql://localhost:3306/delivery_service?serverTimezone=Asia/Seoul&characterEncoding=UTF-8}
     username: ${DB_USERNAME:root}
     password: ${DB_PASSWORD}
+  jpa:
+    open-in-view: false
   data:
     redis:
       host: ${REDIS_HOST:localhost}
@@ -49,6 +51,5 @@ management:
           - 200ms
           - 500ms
           - 1s
-
 
 

@@ -7,6 +7,7 @@ import com.example.delivery_project.domain.repository.DeliveryPlanRepository
 import com.example.delivery_project.domain.repository.DeliveryStopRepository
 import com.example.delivery_project.domain.repository.RiskAssessmentRepository
 import com.example.delivery_project.dto.projection.DeliveryPlanSummaryProjection
+import com.example.delivery_project.dto.projection.DeliveryStatisticsProjection
 import com.example.delivery_project.enums.Role
 import com.example.delivery_project.exception.DeliveryException
 import com.example.delivery_project.exception.global.BusinessException
@@ -29,6 +30,7 @@ class AdminDeliveryPlanServiceTest {
     @Mock lateinit var deliveryStopRepository: DeliveryStopRepository
     @Mock lateinit var riskAssessmentRepository: RiskAssessmentRepository
     @Mock lateinit var planSummary: DeliveryPlanSummaryProjection
+    @Mock lateinit var deliveryStatistics: DeliveryStatisticsProjection
     @InjectMocks lateinit var service: AdminDeliveryPlanService
     private lateinit var plan: DeliveryPlan
 
@@ -84,5 +86,26 @@ class AdminDeliveryPlanServiceTest {
         whenever(deliveryPlanRepository.findDetailById(999L)).thenReturn(null)
         assertThat(assertThrows<BusinessException> { service.getDeliveryPlan(999L) }.errorCode)
             .isEqualTo(DeliveryException.DELIVERY_PLAN_NOT_FOUND)
+    }
+
+    @Test
+    fun 배송계획_배송지_상품_위험_통계를_반환한다() {
+        whenever(deliveryPlanRepository.getDeliveryStatistics()).thenReturn(deliveryStatistics)
+        whenever(deliveryStatistics.totalPlans).thenReturn(10L)
+        whenever(deliveryStatistics.readyPlans).thenReturn(3L)
+        whenever(deliveryStatistics.deliveringPlans).thenReturn(2L)
+        whenever(deliveryStatistics.completedPlans).thenReturn(5L)
+        whenever(deliveryStatistics.totalStops).thenReturn(30L)
+        whenever(deliveryStatistics.remainingStops).thenReturn(8L)
+        whenever(deliveryStatistics.totalBoxes).thenReturn(100L)
+        whenever(deliveryStatistics.remainingBoxes).thenReturn(25L)
+        whenever(deliveryStatistics.dangerStops).thenReturn(2L)
+
+        val response = service.getDeliveryStatistics()
+
+        assertThat(response.totalPlans).isEqualTo(10L)
+        assertThat(response.completedStops).isEqualTo(22L)
+        assertThat(response.deliveredBoxes).isEqualTo(75L)
+        assertThat(response.dangerStops).isEqualTo(2L)
     }
 }

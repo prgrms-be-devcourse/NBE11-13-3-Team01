@@ -5,6 +5,7 @@ import com.example.delivery_project.domain.repository.DeliveryStopRepository
 import com.example.delivery_project.domain.repository.RiskAssessmentRepository
 import com.example.delivery_project.dto.response.AdminDeliveryPlanDetailResponse
 import com.example.delivery_project.dto.response.AdminDeliveryPlanSummaryResponse
+import com.example.delivery_project.dto.response.AdminDeliveryStatisticsResponse
 import com.example.delivery_project.exception.DeliveryException
 import com.example.delivery_project.exception.global.BusinessException
 import org.slf4j.LoggerFactory
@@ -34,4 +35,7 @@ class AdminDeliveryPlanService(
         log.info("[ADMIN][PLAN] 상세 조회 완료 planId: {}", planId)
         return AdminDeliveryPlanDetailResponse.from(plan)
     }
+
+    fun getDeliveryStatistics(): AdminDeliveryStatisticsResponse =
+        AdminDeliveryStatisticsResponse.from(deliveryPlanRepository.getDeliveryStatistics())
 }

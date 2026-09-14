@@ -6,6 +6,7 @@ import com.example.delivery_project.domain.entity.delivery.DeliveryStop
 import com.example.delivery_project.domain.entity.delivery.RiskAssessment
 import com.example.delivery_project.domain.entity.delivery.RiskFactor
 import com.example.delivery_project.domain.entity.user.User
+import com.example.delivery_project.domain.entity.user.DriverLocation
 import com.example.delivery_project.domain.entity.weather.Weather
 import jakarta.persistence.Column
 import jakarta.persistence.OrderBy
@@ -25,6 +26,7 @@ class JpaEntityMappingTest {
             RiskFactor::class.java to "getDescription",
             Weather::class.java to "getBaseDate",
             DeliveryPlan::class.java to "getActualDepartureAt",
+            DriverLocation::class.java to "getUpdatedAt",
         )
 
         proxyTargets.forEach { (entityType, getterName) ->

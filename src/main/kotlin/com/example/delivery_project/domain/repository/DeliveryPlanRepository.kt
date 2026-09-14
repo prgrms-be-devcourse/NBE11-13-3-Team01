@@ -2,6 +2,7 @@ package com.example.delivery_project.domain.repository
 
 import com.example.delivery_project.domain.entity.delivery.DeliveryPlan
 import com.example.delivery_project.dto.projection.DeliveryPlanSummaryProjection
+import com.example.delivery_project.dto.projection.DeliveryStatisticsProjection
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
@@ -123,6 +124,29 @@ interface DeliveryPlanRepository : JpaRepository<DeliveryPlan, Long> {
         nativeQuery = true,
     )
     fun findAllSummaries(): List<DeliveryPlanSummaryProjection>
+
+    @Query(
+        value = """
+        SELECT
+            COUNT(DISTINCT p.id) AS totalPlans,
+            COUNT(DISTINCT CASE WHEN p.status = 'READY' THEN p.id END) AS readyPlans,
+            COUNT(DISTINCT CASE WHEN p.status = 'DELIVERING' THEN p.id END) AS deliveringPlans,
+            COUNT(DISTINCT CASE WHEN p.status = 'COMPLETED' THEN p.id END) AS completedPlans,
+            COUNT(DISTINCT s.id) AS totalStops,
+            COUNT(DISTINCT CASE WHEN s.status <> 'COMPLETED' THEN s.id END) AS remainingStops,
+            COALESCE(SUM(i.quantity), 0) AS totalBoxes,
+            COALESCE(SUM(CASE WHEN s.status <> 'COMPLETED' THEN i.quantity ELSE 0 END), 0) AS remainingBoxes,
+            COUNT(DISTINCT CASE
+                WHEN s.status <> 'COMPLETED' AND ra.level = 'DANGER' THEN s.id
+            END) AS dangerStops
+        FROM delivery_plan p
+        LEFT JOIN delivery_stop s ON s.delivery_plan_id = p.id
+        LEFT JOIN delivery_item i ON i.delivery_stop_id = s.id
+        LEFT JOIN risk_assessment ra ON ra.delivery_stop_id = s.id
+        """,
+        nativeQuery = true,
+    )
+    fun getDeliveryStatistics(): DeliveryStatisticsProjection
 
     fun findByIdAndDriverId(planId: Long, driverId: Long): DeliveryPlan?
 }

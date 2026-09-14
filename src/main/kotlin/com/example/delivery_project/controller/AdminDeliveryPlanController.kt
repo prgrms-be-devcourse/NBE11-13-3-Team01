@@ -3,6 +3,7 @@ package com.example.delivery_project.controller
 import com.example.delivery_project.dto.request.CreateDeliveryPlanRequest
 import com.example.delivery_project.dto.response.AdminDeliveryPlanDetailResponse
 import com.example.delivery_project.dto.response.AdminDeliveryPlanSummaryResponse
+import com.example.delivery_project.dto.response.AdminDeliveryStatisticsResponse
 import com.example.delivery_project.dto.response.CreateDeliveryPlanResponse
 import com.example.delivery_project.service.AdminDeliveryPlanService
 import com.example.delivery_project.service.DeliveryPlanCreationFacade
@@ -51,6 +52,16 @@ class AdminDeliveryPlanController(
     fun getDeliveryPlan(
         @Parameter(description = "배송 계획 ID", example = "1") @PathVariable planId: Long,
     ): AdminDeliveryPlanDetailResponse = adminDeliveryPlanService.getDeliveryPlan(planId)
+
+    @Operation(summary = "배송 정보 통계 조회")
+    @ApiResponses(value = [
+        ApiResponse(responseCode = "200", description = "배송 정보 통계 조회 성공"),
+        ApiResponse(responseCode = "401", description = "인증 필요"),
+        ApiResponse(responseCode = "403", description = "관리자 권한 필요"),
+    ])
+    @GetMapping("/delivery-plans/statistics")
+    fun getDeliveryStatistics(): AdminDeliveryStatisticsResponse =
+        adminDeliveryPlanService.getDeliveryStatistics()
 
     @Operation(summary = "배송 계획 생성 및 기사 할당", description = "지정한 배송 기사에게 새로운 배송 계획을 생성해 할당합니다.")
     @ApiResponses(value = [

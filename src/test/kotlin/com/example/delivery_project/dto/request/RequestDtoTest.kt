@@ -68,4 +68,13 @@ class RequestDtoTest {
 
         assertThat(validator.validate(request)).isEmpty()
     }
+
+    @Test
+    fun `기사 위치는 위도와 경도의 유효 범위를 검증한다`() {
+        val request = UpdateDriverLocationRequest(90.1, -180.1)
+
+        assertThat(validator.validate(request).map { it.propertyPath.toString() })
+            .containsExactlyInAnyOrder("latitude", "longitude")
+        assertThat(validator.validate(UpdateDriverLocationRequest(37.5665, 126.9780))).isEmpty()
+    }
 }
