@@ -639,3 +639,70 @@ select * from delivery_plan;
 select * from weather;
 
 
+
+-- ============================================================
+-- 삭제 배치(deliveryPlanCleanupJob) 동작 확인용 데이터
+--   보관 기간 30일 기준으로 삭제 대상과 유지 대상을 섞어 둔다.
+--   배치를 돌리면 920001~920003 과 그 하위 데이터만 사라져야 한다.
+--   920004(29일 경과)와 920005(배송 중)는 남아야 한다.
+--   검증이 끝나면 이 블록은 지운다.
+-- ============================================================
+
+INSERT INTO delivery_plan (
+    id, driver_id, departure_location, departure_latitude, departure_longitude,
+    scheduled_departure_at, actual_departure_at, status, created_at, completed_at
+)
+VALUES
+    (920001, (SELECT id FROM users WHERE login_id = 'user1'), '[배치검증] 40일 전 완료', 37.50, 126.90,
+     NOW() - INTERVAL 41 DAY, NOW() - INTERVAL 41 DAY, 'COMPLETED', NOW() - INTERVAL 41 DAY, NOW() - INTERVAL 40 DAY),
+    (920002, (SELECT id FROM users WHERE login_id = 'user1'), '[배치검증] 35일 전 완료', 37.50, 126.90,
+     NOW() - INTERVAL 41 DAY, NOW() - INTERVAL 41 DAY, 'COMPLETED', NOW() - INTERVAL 41 DAY, NOW() - INTERVAL 35 DAY),
+    (920003, (SELECT id FROM users WHERE login_id = 'user1'), '[배치검증] 31일 전 완료', 37.50, 126.90,
+     NOW() - INTERVAL 41 DAY, NOW() - INTERVAL 41 DAY, 'COMPLETED', NOW() - INTERVAL 41 DAY, NOW() - INTERVAL 31 DAY),
+    (920004, (SELECT id FROM users WHERE login_id = 'user1'), '[배치검증] 29일 전 완료 - 유지', 37.50, 126.90,
+     NOW() - INTERVAL 41 DAY, NOW() - INTERVAL 41 DAY, 'COMPLETED', NOW() - INTERVAL 41 DAY, NOW() - INTERVAL 29 DAY),
+    (920005, (SELECT id FROM users WHERE login_id = 'user1'), '[배치검증] 배송 중 - 유지', 37.50, 126.90,
+     NOW() - INTERVAL 41 DAY, NOW() - INTERVAL 41 DAY, 'DELIVERING', NOW() - INTERVAL 41 DAY, NULL);
+
+INSERT INTO delivery_stop (
+    id, delivery_plan_id, address, latitude, longitude, status, sequence, completed_at
+)
+VALUES
+    (920101, 920001, '[배치검증] 배송지 A', 37.51, 126.91, 'COMPLETED', 0, NOW() - INTERVAL 40 DAY),
+    (920102, 920001, '[배치검증] 배송지 B', 37.52, 126.92, 'COMPLETED', 1, NOW() - INTERVAL 40 DAY),
+    (920103, 920002, '[배치검증] 배송지 C', 37.53, 126.93, 'COMPLETED', 0, NOW() - INTERVAL 35 DAY),
+    (920104, 920003, '[배치검증] 배송지 D', 37.54, 126.94, 'COMPLETED', 0, NOW() - INTERVAL 31 DAY),
+    (920105, 920004, '[배치검증] 배송지 E - 유지', 37.55, 126.95, 'COMPLETED', 0, NOW() - INTERVAL 29 DAY),
+    (920106, 920005, '[배치검증] 배송지 F - 유지', 37.56, 126.96, 'DELIVERING', 0, NULL);
+
+INSERT INTO delivery_item (
+    id, delivery_stop_id, product_name, product_type, quantity
+)
+VALUES
+    (920201, 920101, '[배치검증] 상품1', 'NORMAL', 3),
+    (920202, 920101, '[배치검증] 상품2', 'FROZEN', 2),
+    (920203, 920102, '[배치검증] 상품3', 'NORMAL', 1),
+    (920204, 920103, '[배치검증] 상품4', 'FRAGILE', 5),
+    (920205, 920104, '[배치검증] 상품5', 'NORMAL', 1),
+    (920206, 920105, '[배치검증] 상품6 - 유지', 'NORMAL', 1),
+    (920207, 920106, '[배치검증] 상품7 - 유지', 'NORMAL', 1);
+
+INSERT INTO risk_assessment (
+    id, delivery_stop_id, level, analyzed_at
+)
+VALUES
+    (920301, 920101, 'DANGER',  NOW() - INTERVAL 40 DAY),
+    (920302, 920102, 'SAFE',    NOW() - INTERVAL 40 DAY),
+    (920303, 920103, 'CAUTION', NOW() - INTERVAL 35 DAY),
+    (920304, 920104, 'SAFE',    NOW() - INTERVAL 31 DAY),
+    (920305, 920105, 'SAFE',    NOW() - INTERVAL 29 DAY),
+    (920306, 920106, 'SAFE',    NOW() - INTERVAL 1 DAY);
+
+INSERT INTO risk_factor (
+    id, risk_assessment_id, type, description
+)
+VALUES
+    (920401, 920301, 'HEAVY_RAIN', '[배치검증] 폭우'),
+    (920402, 920301, 'HEAT_WAVE',  '[배치검증] 폭염'),
+    (920403, 920303, 'HEAVY_RAIN', '[배치검증] 폭우2'),
+    (920404, 920305, 'HEAVY_RAIN', '[배치검증] 폭우3 - 유지');
