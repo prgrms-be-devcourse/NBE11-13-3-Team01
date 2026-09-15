@@ -2,9 +2,12 @@ package com.example.delivery_project.domain.repository
 
 import com.example.delivery_project.domain.entity.delivery.DeliveryPlan
 import com.example.delivery_project.dto.projection.DeliveryPlanSummaryProjection
+import com.example.delivery_project.enums.DeliveryPlanStatus
+import org.springframework.data.domain.Pageable
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
+import java.time.LocalDateTime
 
 interface DeliveryPlanRepository : JpaRepository<DeliveryPlan, Long> {
     @Query(
@@ -125,4 +128,24 @@ interface DeliveryPlanRepository : JpaRepository<DeliveryPlan, Long> {
     fun findAllSummaries(): List<DeliveryPlanSummaryProjection>
 
     fun findByIdAndDriverId(planId: Long, driverId: Long): DeliveryPlan?
+
+    // 삭제 배치용 조회. 마지막으로 처리한 ID 다음부터 한 페이지씩 읽는다.
+    // Offset 대신 Page 사용하는 이유 : 읽으면서 지우기 때문에 OFFSET 기준이 매번 어긋나 행을 건너뜀.
+    // ID 를 커서로 쓰면 삭제 여부와 무관하게 빠짐없이 read 가능.
+    // Pageable 은 정렬이 아니라 LIMIT 용도로만 사용.
+    @Query(
+        """
+        SELECT p FROM DeliveryPlan p
+        WHERE p.status = :status
+          AND p.completedAt < :cutoff
+          AND p.id > :lastId
+        ORDER BY p.id
+        """,
+    )
+    fun findExpiredPlans(
+        @Param("status") status: DeliveryPlanStatus,
+        @Param("cutoff") cutoff: LocalDateTime,
+        @Param("lastId") lastId: Long,
+        pageable: Pageable,
+    ): List<DeliveryPlan>
 }
