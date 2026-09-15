@@ -38,13 +38,16 @@ jobs:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           plugin_marketplaces: 'https://github.com/anthropics/claude-code.git'
           plugins: 'code-review@claude-code-plugins'
+          # 원인 파악용. 어떤 도구가 거부됐는지 로그에 드러난다.
+          # 확인이 끝나면 다시 제거한다.
+          show_full_output: true
           prompt: '/code-review:code-review --comment ${{ github.repository }}/pull/${{ github.event.pull_request.number }}'
           # code-review 플러그인은 서브에이전트를 병렬로 띄워 리뷰하고,
           # PR 내용은 GitHub CLI 로 읽는다. 그래서 Task 와 gh 명령이 필요하다.
           # 댓글 도구만 허용하면 코드를 못 읽어 아무 지적 없이 끝난다.
           # Bash 는 전체를 열지 않고 조회에 필요한 명령으로만 제한한다.
           claude_args: >-
-            --allowedTools "mcp__github_inline_comment__create_inline_comment,Task,TodoWrite,Read,Grep,Glob,Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr list:*),Bash(gh pr comment:*),Bash(gh issue view:*),Bash(gh issue list:*),Bash(gh search:*),Bash(gh api:*),Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(git blame:*)"
+            --allowedTools "mcp__github_inline_comment__create_inline_comment,Task,TodoWrite,Read,Grep,Glob,Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr list:*),Bash(gh pr comment:*),Bash(gh issue view:*),Bash(gh issue list:*),Bash(gh search:*),Bash(gh api:*),Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(git blame:*),Bash(git rev-parse:*)"
           # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
           # or https://code.claude.com/docs/en/cli-reference for available options
 
