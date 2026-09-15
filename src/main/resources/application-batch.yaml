@@ -7,11 +7,16 @@ spring:
   batch:
     job:
       enabled: false # 기동 시 모든 Job 자동 실행 방지. 스케줄러가 직접 띄운다.
-  sql:
-    init:
-      # Batch 6 / Boot 4 에는 spring.batch.jdbc.initialize-schema 가 없다.
-      # 메타데이터 테이블은 표준 SQL 초기화로 직접 만든다.
-      mode: ${BATCH_SCHEMA_INIT:always} # 운영에서는 never 로 두고 DDL 을 직접 관리
-      # Batch 라이브러리 안의 공식 DDL 을 직접 가리킨다. 복사본을 둘 필요가 없다.
-      schema-locations: classpath:org/springframework/batch/core/schema-mysql.sql
-      continue-on-error: true # 이미 존재하면 넘어간다
+
+delivery:
+  cleanup:
+    cron: ${CLEANUP_CRON:0 0 4 * * *}
+    retention-days: ${CLEANUP_RETENTION_DAYS:30}
+    chunk-size: 100
+    page-size: 100
+
+batch:
+  metadata:
+    # 배치 메타데이터 테이블 자동 생성 여부.
+    # 운영에서는 false 로 두고 DDL 을 직접 적용한다.
+    initialize-schema: ${BATCH_SCHEMA_INIT:true}
