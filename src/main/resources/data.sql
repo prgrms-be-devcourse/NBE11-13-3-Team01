@@ -639,4 +639,3 @@ select * from delivery_plan;
 select * from weather;
 
 
-
