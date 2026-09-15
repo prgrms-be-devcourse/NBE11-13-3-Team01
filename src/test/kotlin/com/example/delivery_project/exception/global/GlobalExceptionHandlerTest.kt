@@ -6,6 +6,8 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.mock
 import org.springframework.core.MethodParameter
+import org.springframework.dao.CannotAcquireLockException
+import org.springframework.dao.DeadlockLoserDataAccessException
 import org.springframework.validation.BeanPropertyBindingResult
 import org.springframework.validation.FieldError
 import org.springframework.web.bind.MethodArgumentNotValidException
@@ -31,6 +33,27 @@ class GlobalExceptionHandlerTest {
         assertThat(response.statusCode).isEqualTo(ExceptionCode.UNEXPECTED_ERROR.status)
         assertThat(response.body?.code).isEqualTo("UNEXPECTED_ERROR")
         assertThat(response.body?.reason).doesNotContain("민감한 내부 오류")
+    }
+
+    @Test
+    fun `락 대기 타임아웃은 재시도 가능한 409로 응답한다`() {
+        val response = handler.handleLockConflict(
+            CannotAcquireLockException("Lock wait timeout exceeded"),
+        )
+
+        assertThat(response.statusCode.value()).isEqualTo(409)
+        assertThat(response.body?.code).isEqualTo("DELIVERY_CLAIM_LOCK_CONFLICT")
+        assertThat(response.body?.message).doesNotContain("Lock wait timeout")
+    }
+
+    @Test
+    fun `데드락 희생자도 409로 응답한다`() {
+        val response = handler.handleLockConflict(
+            DeadlockLoserDataAccessException("deadlock", RuntimeException("Deadlock found")),
+        )
+
+        assertThat(response.statusCode.value()).isEqualTo(409)
+        assertThat(response.body?.code).isEqualTo("DELIVERY_CLAIM_LOCK_CONFLICT")
     }
 
     @Test

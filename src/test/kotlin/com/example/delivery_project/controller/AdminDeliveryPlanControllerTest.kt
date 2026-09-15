@@ -5,9 +5,11 @@ import com.example.delivery_project.dto.request.CreateDeliveryPlanRequest
 import com.example.delivery_project.dto.request.CreateDeliveryStopRequest
 import com.example.delivery_project.dto.response.AdminDeliveryPlanDetailResponse
 import com.example.delivery_project.dto.response.AdminDeliveryPlanSummaryResponse
+import com.example.delivery_project.dto.response.AdminDeliveryStatisticsResponse
 import com.example.delivery_project.enums.ProductType
 import com.example.delivery_project.service.AdminDeliveryPlanService
 import com.example.delivery_project.service.DeliveryPlanCreationFacade
+import com.example.delivery_project.service.DriverRecommendationService
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.mock
@@ -19,17 +21,25 @@ import java.time.LocalDateTime
 class AdminDeliveryPlanControllerTest {
     private val adminDeliveryPlanService = mock<AdminDeliveryPlanService>()
     private val deliveryPlanCreationFacade = mock<DeliveryPlanCreationFacade>()
-    private val controller = AdminDeliveryPlanController(adminDeliveryPlanService, deliveryPlanCreationFacade)
+    private val driverRecommendationService = mock<DriverRecommendationService>()
+    private val controller = AdminDeliveryPlanController(
+        adminDeliveryPlanService,
+        deliveryPlanCreationFacade,
+        driverRecommendationService,
+    )
 
     @Test
     fun `관리자는 전체 배송계획과 상세를 조회한다`() {
         val summary = mock<AdminDeliveryPlanSummaryResponse>()
         val detail = mock<AdminDeliveryPlanDetailResponse>()
+        val statistics = mock<AdminDeliveryStatisticsResponse>()
         whenever(adminDeliveryPlanService.getAllDeliveryPlans()).thenReturn(listOf(summary))
         whenever(adminDeliveryPlanService.getDeliveryPlan(10L)).thenReturn(detail)
+        whenever(adminDeliveryPlanService.getDeliveryStatistics()).thenReturn(statistics)
 
         assertThat(controller.getAllDeliveryPlans()).containsExactly(summary)
         assertThat(controller.getDeliveryPlan(10L)).isSameAs(detail)
+        assertThat(controller.getDeliveryStatistics()).isSameAs(statistics)
     }
 
     @Test

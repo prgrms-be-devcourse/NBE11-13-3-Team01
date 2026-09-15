@@ -7,6 +7,7 @@
 ## 설계 원칙
 
 - DTO와 값 객체는 `data class`, 상태가 없는 유틸리티와 팩토리는 `object`, 정적 팩토리는 `companion object`로 표현한다.
+- DTO는 `request`와 `response` 패키지를 분리하고, 각 패키지 안에서는 배송·사용자·관리자·위험도·날씨처럼 함께 변경되는 기능 단위의 복수 클래스를 한 Kotlin 파일에 모은다.
 - null 가능성은 `Optional` 대신 Kotlin nullable 타입으로 드러내고, 호출 지점에서 `requireNotNull` 또는 Elvis 연산자로 처리한다.
 - Java Stream 대신 Kotlin 컬렉션 연산을 사용한다. 변경 불가능한 경로 계산 스냅샷에는 `kotlinx.collections.immutable`의 영속 컬렉션을 사용한다.
 - Java 코드 생성 라이브러리와 annotation processor는 제거했다. Jackson 내부 응답 모델도 일반 Kotlin `data class`로 표현해 JVM 전용 브리지 annotation이나 Java record 접근자를 두지 않는다.

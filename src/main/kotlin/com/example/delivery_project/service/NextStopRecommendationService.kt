@@ -13,16 +13,10 @@ import com.example.delivery_project.service.component.route.RouteLeg
 import com.example.delivery_project.service.component.route.RouteOptimizationContext
 import com.example.delivery_project.service.component.route.RouteOptimizer
 import com.example.delivery_project.service.component.route.TravelCostMatrix
+import com.example.delivery_project.util.GeoDistance
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
-import kotlin.math.PI
-import kotlin.math.asin
-import kotlin.math.ceil
-import kotlin.math.cos
-import kotlin.math.pow
-import kotlin.math.sin
-import kotlin.math.sqrt
 
 @Service
 @Transactional(readOnly = true)
@@ -114,16 +108,8 @@ class NextStopRecommendationService(
         return TravelCostMatrix(durations)
     }
 
-    private fun estimateTravelSeconds(from: RoutePoint, to: RoutePoint): Long {
-        val latitudeDistance = (to.latitude - from.latitude) * DEGREES_TO_RADIANS
-        val longitudeDistance = (to.longitude - from.longitude) * DEGREES_TO_RADIANS
-        val fromLatitude = from.latitude * DEGREES_TO_RADIANS
-        val toLatitude = to.latitude * DEGREES_TO_RADIANS
-        val haversine = sin(latitudeDistance / 2).pow(2) +
-            cos(fromLatitude) * cos(toLatitude) * sin(longitudeDistance / 2).pow(2)
-        val distanceMeters = 2 * EARTH_RADIUS_METERS * asin(sqrt(haversine))
-        return ceil(distanceMeters / ESTIMATED_SPEED_METERS_PER_SECOND).toLong().coerceAtLeast(1)
-    }
+    private fun estimateTravelSeconds(from: RoutePoint, to: RoutePoint): Long =
+        GeoDistance.estimateTravelSeconds(from.latitude, from.longitude, to.latitude, to.longitude)
 
     private data class RoutePoint(
         val nodeId: Long,
@@ -137,8 +123,5 @@ class NextStopRecommendationService(
     private companion object {
         const val CANDIDATE_LIMIT = 5
         const val DEPARTURE_NODE_ID = Long.MIN_VALUE
-        const val EARTH_RADIUS_METERS = 6_371_000.0
-        const val ESTIMATED_SPEED_METERS_PER_SECOND = 30_000.0 / 3_600.0
-        const val DEGREES_TO_RADIANS = PI / 180.0
     }
 }

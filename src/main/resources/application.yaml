@@ -5,6 +5,8 @@ spring:
     url: ${DB_URL:jdbc:mysql://localhost:3306/delivery_service?serverTimezone=Asia/Seoul&characterEncoding=UTF-8}
     username: ${DB_USERNAME:root}
     password: ${DB_PASSWORD}
+  jpa:
+    open-in-view: false
   data:
     redis:
       host: ${REDIS_HOST:localhost}
@@ -29,6 +31,31 @@ demo:
   risk:
     enabled: ${DEMO_RISK_ENABLED:false}
 
+delivery:
+  claim:
+    # 배송 기사 한 명이 동시에 보유할 수 있는 진행 중 배송 업무 수
+    max-active-plans: ${DELIVERY_MAX_ACTIVE_PLANS:3}
+  priority-window:
+    # 등록 직후 추천 상위 기사에게만 수령 권한을 주는 구간 사용 여부
+    enabled: ${DELIVERY_PRIORITY_WINDOW_ENABLED:true}
+    seconds: ${DELIVERY_PRIORITY_WINDOW_SECONDS:60}
+    driver-count: ${DELIVERY_PRIORITY_WINDOW_DRIVERS:3}
+  recommendation:
+    # 추천 결과로 돌려줄 기사 수
+    limit: ${DELIVERY_RECOMMENDATION_LIMIT:3}
+    # 위치 정보가 이 시간보다 오래되면 신선하지 않은 것으로 간주한다.
+    location-stale-minutes: ${DELIVERY_RECOMMENDATION_STALE_MINUTES:30}
+    # 거리 정규화 상한(m). 이 값 이상이면 거리 점수는 0점이 된다.
+    max-distance-meters: ${DELIVERY_RECOMMENDATION_MAX_DISTANCE:30000}
+    weights:
+      distance: 0.40
+      active-plans: 0.20
+      remaining-stops: 0.15
+      remaining-boxes: 0.10
+      danger-stops: 0.05
+      location-freshness: 0.10
+
+
 management:
   endpoints:
     web:
@@ -49,6 +76,5 @@ management:
           - 200ms
           - 500ms
           - 1s
-
 
 

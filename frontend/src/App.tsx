@@ -1,8 +1,10 @@
 import { Navigate, Route, Routes } from 'react-router'
 import { AdminRoute } from './components/AdminRoute'
 import { AppLayout } from './components/AppLayout'
+import { DriverRoute } from './components/DriverRoute'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { CreatePlanPage } from './pages/CreatePlanPage'
+import { JobMarketPage } from './pages/JobMarketPage'
 import { LoginPage } from './pages/LoginPage'
 import { NotFoundPage } from './pages/NotFoundPage'
 import { PlanDetailPage } from './pages/PlanDetailPage'
@@ -17,6 +19,9 @@ function App() {
           <Route index element={<Navigate to="/plans" replace />} />
           <Route path="/plans" element={<PlanListPage />} />
           <Route path="/plans/:planId" element={<PlanDetailPage />} />
+          <Route element={<DriverRoute />}>
+            <Route path="/market" element={<JobMarketPage />} />
+          </Route>
           <Route element={<AdminRoute />}>
             <Route path="/plans/new" element={<CreatePlanPage />} />
           </Route>

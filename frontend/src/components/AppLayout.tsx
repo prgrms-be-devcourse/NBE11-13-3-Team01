@@ -1,5 +1,6 @@
 import { NavLink, Outlet, useNavigate } from 'react-router'
 import { useAuth } from '../auth/AuthContext'
+import { DriverLocationTracker } from './DriverLocationTracker'
 
 export function AppLayout() {
   const { user, logout } = useAuth()
@@ -24,12 +25,16 @@ export function AppLayout() {
           <NavLink to="/plans" end>
             {user?.role === 'ROLE_ADMIN' ? '전체 배송 계획' : '내 배송 계획'}
           </NavLink>
+          {user?.role === 'ROLE_DELIVERY_DRIVER' && (
+            <NavLink to="/market">업무 가져가기</NavLink>
+          )}
           {user?.role === 'ROLE_ADMIN' && (
-            <NavLink to="/plans/new">계획 할당</NavLink>
+            <NavLink to="/plans/new">업무 등록</NavLink>
           )}
         </nav>
 
         <div className="user-menu">
+          {user?.role === 'ROLE_DELIVERY_DRIVER' && <DriverLocationTracker />}
           <div className="user-copy">
             <strong>{user?.name}</strong>
             <span>{user?.loginId}</span>

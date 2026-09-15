@@ -1,0 +1,13 @@
+apiVersion: 1
+
+providers:
+  - name: delivery-insight
+    orgId: 1
+    folder: Delivery Insight
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
+    options:
+      path: /etc/grafana/dashboards
+      foldersFromFilesStructure: false

@@ -1,6 +1,10 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router'
-import { createAssignedDeliveryPlan, getDrivers } from '../api/deliveryPlans'
+import {
+  createAssignedDeliveryPlan,
+  createOpenDeliveryPlan,
+  getDrivers,
+} from '../api/deliveryPlans'
 import { AddressSearch } from '../components/AddressSearch'
 import type {
   CreateDeliveryItemRequest,
@@ -31,8 +35,11 @@ function emptyStop(): CreateDeliveryStopRequest {
   return { address: '', items: [emptyItem()] }
 }
 
+type AssignMode = 'open' | 'direct'
+
 export function CreatePlanPage() {
   const navigate = useNavigate()
+  const [assignMode, setAssignMode] = useState<AssignMode>('open')
   const [drivers, setDrivers] = useState<DriverSummary[]>([])
   const [selectedDriverId, setSelectedDriverId] = useState<number | ''>('')
   const [isDriverLoading, setIsDriverLoading] = useState(true)
@@ -96,7 +103,7 @@ export function CreatePlanPage() {
     setIsSubmitting(true)
 
     try {
-      if (selectedDriverId === '') {
+      if (assignMode === 'direct' && selectedDriverId === '') {
         throw new Error('배송 계획을 할당할 기사를 선택하세요.')
       }
       if (!departureAddress) {
@@ -106,14 +113,10 @@ export function CreatePlanPage() {
         throw new Error('모든 배송지를 주소 찾기에서 선택하세요.')
       }
 
-      const response = await createAssignedDeliveryPlan(
-        selectedDriverId,
-        {
-          departureAddress,
-          scheduledDepartureAt,
-          stops,
-        },
-      )
+      const request = { departureAddress, scheduledDepartureAt, stops }
+      const response = assignMode === 'open'
+        ? await createOpenDeliveryPlan(request)
+        : await createAssignedDeliveryPlan(selectedDriverId as number, request)
       navigate(`/plans/${response.planId}`)
     } catch (caughtError) {
       setError(errorMessage(caughtError))
@@ -126,9 +129,12 @@ export function CreatePlanPage() {
     <div className="page-stack page-narrow">
       <section className="page-heading">
         <Link to="/plans" className="back-link">← 배송 계획 목록</Link>
-        <span className="eyebrow">ASSIGN DELIVERY PLAN</span>
-        <h1>새 배송 계획 할당</h1>
-        <p>담당 기사를 선택하고 배송 정보를 입력하면 기사에게 계획이 할당됩니다.</p>
+        <span className="eyebrow">POST DELIVERY JOB</span>
+        <h1>새 배송 업무 등록</h1>
+        <p>
+          기사를 지정하지 않고 올리면 기사들이 직접 가져갑니다.
+          추천 상위 기사에게는 잠시 우선 수령 권한이 주어집니다.
+        </p>
       </section>
 
       <form className="create-form" onSubmit={handleSubmit}>
@@ -136,34 +142,67 @@ export function CreatePlanPage() {
           <div className="section-title">
             <span className="section-number">01</span>
             <div>
-              <h2>담당 기사</h2>
-              <p>이 배송 계획을 수행할 배송 기사를 선택하세요.</p>
+              <h2>등록 방식</h2>
+              <p>기사들이 경쟁해서 가져가게 할지, 특정 기사에게 바로 맡길지 선택하세요.</p>
             </div>
           </div>
-          <div className="form-grid single-field-grid">
-            <label className="field field-wide">
-              <span>배송 기사</span>
-              <select
-                value={selectedDriverId}
-                onChange={(event) => setSelectedDriverId(
-                  event.target.value ? Number(event.target.value) : '',
-                )}
-                disabled={isDriverLoading}
-                required
-              >
-                <option value="">
-                  {isDriverLoading ? '배송 기사 불러오는 중...' : '배송 기사를 선택하세요'}
-                </option>
-                {drivers.map((driver) => (
-                  <option value={driver.driverId} key={driver.driverId}>
-                    {driver.name} · {driver.loginId} (#{driver.driverId})
-                  </option>
-                ))}
-              </select>
+          <div className="assign-mode-options" role="radiogroup" aria-label="등록 방식">
+            <label className={`assign-mode-option${assignMode === 'open' ? ' is-active' : ''}`}>
+              <input
+                type="radio"
+                name="assign-mode"
+                value="open"
+                checked={assignMode === 'open'}
+                onChange={() => setAssignMode('open')}
+              />
+              <span>
+                <strong>미배정으로 공개</strong>
+                <small>기사들이 목록에서 확인하고 선착순으로 가져갑니다. (권장)</small>
+              </span>
+            </label>
+            <label className={`assign-mode-option${assignMode === 'direct' ? ' is-active' : ''}`}>
+              <input
+                type="radio"
+                name="assign-mode"
+                value="direct"
+                checked={assignMode === 'direct'}
+                onChange={() => setAssignMode('direct')}
+              />
+              <span>
+                <strong>기사 직접 할당</strong>
+                <small>지정한 기사에게 바로 배정합니다. 동시 보유 한도는 동일하게 적용됩니다.</small>
+              </span>
             </label>
           </div>
-          {!isDriverLoading && drivers.length === 0 && (
-            <p className="field-help danger-text">할당 가능한 배송 기사가 없습니다.</p>
+
+          {assignMode === 'direct' && (
+            <>
+              <div className="form-grid single-field-grid">
+                <label className="field field-wide">
+                  <span>배송 기사</span>
+                  <select
+                    value={selectedDriverId}
+                    onChange={(event) => setSelectedDriverId(
+                      event.target.value ? Number(event.target.value) : '',
+                    )}
+                    disabled={isDriverLoading}
+                    required
+                  >
+                    <option value="">
+                      {isDriverLoading ? '배송 기사 불러오는 중...' : '배송 기사를 선택하세요'}
+                    </option>
+                    {drivers.map((driver) => (
+                      <option value={driver.driverId} key={driver.driverId}>
+                        {driver.name} · {driver.loginId} (#{driver.driverId})
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              {!isDriverLoading && drivers.length === 0 && (
+                <p className="field-help danger-text">할당 가능한 배송 기사가 없습니다.</p>
+              )}
+            </>
           )}
         </section>
 
@@ -295,7 +334,9 @@ export function CreatePlanPage() {
         <div className="form-actions">
           <Link to="/plans" className="button button-ghost">취소</Link>
           <button type="submit" className="button button-primary button-large" disabled={isSubmitting}>
-            {isSubmitting ? '계획 할당 중...' : '배송 계획 할당'}
+            {isSubmitting
+              ? '등록 중...'
+              : assignMode === 'open' ? '미배정 업무로 등록' : '기사에게 할당'}
           </button>
         </div>
       </form>

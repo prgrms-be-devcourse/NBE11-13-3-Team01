@@ -11,6 +11,14 @@ services:
       - "9090:9090"
     volumes:
       - ./monitoring/prometheus.yaml:/etc/prometheus/prometheus.yml
+    # command 를 덮어쓰면 이미지 기본 인자가 사라지므로 기본값도 함께 명시한다.
+    # --web.enable-remote-write-receiver 는 k6 의 Prometheus remote write 출력을 받기 위한 것이다.
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --web.console.libraries=/usr/share/prometheus/console_libraries
+      - --web.console.templates=/usr/share/prometheus/consoles
+      - --web.enable-remote-write-receiver
 
   tempo:
     image: grafana/tempo:2.10.7
@@ -34,9 +42,27 @@ services:
       - GF_SECURITY_ADMIN_PASSWORD=admin
     depends_on:
       - tempo
+      - prometheus
     volumes:
       - grafana-data:/var/lib/grafana
-      - ./monitoring/grafana/provisioning/datasources/tempo.yaml:/etc/grafana/provisioning/datasources/tempo.yaml:ro
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/etc/grafana/dashboards:ro
+
+  # DB 내부 지표(행 락 대기, 실행 스레드)를 볼 때만 띄운다.
+  #   docker compose --profile db-metrics up -d
+  # DB_USERNAME / DB_PASSWORD 환경변수가 필요하다.
+  mysql-exporter:
+    image: prom/mysqld-exporter:latest
+    container_name: mysql-exporter
+    profiles: ["db-metrics"]
+    ports:
+      - "9104:9104"
+    environment:
+      - MYSQLD_EXPORTER_PASSWORD=${DB_PASSWORD}
+    command:
+      - --mysqld.address=host.docker.internal:3306
+      - --mysqld.username=${DB_USERNAME:-root}
+      - --collect.info_schema.innodb_metrics
 
 volumes:
   grafana-data:

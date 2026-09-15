@@ -15,13 +15,15 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Link, useParams } from 'react-router'
+import { Link, useNavigate, useParams } from 'react-router'
 import {
   completeDeliveryPlan,
   completeDeliveryStop,
   getAdminDeliveryPlan,
   getDeliveryPlan,
+  getDriverRecommendations,
   getNextStopRecommendation,
+  releaseDeliveryPlan,
   reorderDeliveryStops,
   startDeliveryPlan,
 } from '../api/deliveryPlans'
@@ -32,6 +34,7 @@ import { RiskBadge, StatusBadge } from '../components/StatusBadge'
 import type {
   DeliveryPlanDetail,
   DeliveryStop,
+  DriverRecommendation,
   NextStopRecommendation,
   ProductType,
 } from '../types/api'
@@ -53,6 +56,7 @@ type StopView = 'active' | 'completed'
 
 export function PlanDetailPage() {
   const { planId: planIdParam } = useParams()
+  const navigate = useNavigate()
   const { user } = useAuth()
   const isAdmin = user?.role === 'ROLE_ADMIN'
   const planId = Number(planIdParam)
@@ -65,6 +69,9 @@ export function PlanDetailPage() {
   const [orderedStops, setOrderedStops] = useState<DeliveryStop[]>([])
   const [recommendation, setRecommendation] = useState<NextStopRecommendation | null>(null)
   const [recommendationError, setRecommendationError] = useState('')
+  const [driverRecommendation, setDriverRecommendation] = useState<DriverRecommendation | null>(null)
+  const [driverRecommendationError, setDriverRecommendationError] = useState('')
+  const [isRecommendingDrivers, setIsRecommendingDrivers] = useState(false)
   const [stopView, setStopView] = useState<StopView>('active')
   const [isLoading, setIsLoading] = useState(true)
   const [busyAction, setBusyAction] = useState('')
@@ -98,10 +105,11 @@ export function PlanDetailPage() {
       const response = adminResponse?.deliveryPlan ?? await getDeliveryPlan(planId)
       setPlan(response)
       setOrderedStops(response.deliveryStops)
-      setAssignedDriver(adminResponse ? {
+      // 미배정(OPEN) 계획은 기사 정보가 모두 null 이므로 담당 기사 블록 자체를 만들지 않는다.
+      setAssignedDriver(adminResponse && adminResponse.driverId !== null ? {
         driverId: adminResponse.driverId,
-        loginId: adminResponse.driverLoginId,
-        name: adminResponse.driverName,
+        loginId: adminResponse.driverLoginId ?? '',
+        name: adminResponse.driverName ?? '',
       } : null)
 
       if (response.status === 'COMPLETED') {
@@ -135,6 +143,32 @@ export function PlanDetailPage() {
       window.clearTimeout(movedAnimationTimer.current)
     }
   }, [])
+
+  /** 반납하면 이 계획은 더 이상 내 것이 아니므로 상세에 머무르지 않고 목록으로 돌아간다. */
+  const handleRelease = async () => {
+    setError('')
+    setBusyAction('release')
+    try {
+      await releaseDeliveryPlan(planId)
+      navigate('/market')
+    } catch (caughtError) {
+      setError(errorMessage(caughtError))
+      setBusyAction('')
+    }
+  }
+
+  const loadDriverRecommendations = async () => {
+    setDriverRecommendationError('')
+    setIsRecommendingDrivers(true)
+    try {
+      setDriverRecommendation(await getDriverRecommendations(planId))
+    } catch (caughtError) {
+      setDriverRecommendation(null)
+      setDriverRecommendationError(errorMessage(caughtError))
+    } finally {
+      setIsRecommendingDrivers(false)
+    }
+  }
 
   const runAction = async (actionName: string, action: () => Promise<void>) => {
     setError('')
@@ -236,6 +270,16 @@ export function PlanDetailPage() {
               {busyAction === 'start' ? '배송 시작 중...' : '배송 시작'}
             </button>
           )}
+          {!isAdmin && plan.status === 'READY' && (
+            <button
+              type="button"
+              className="button button-ghost button-large"
+              disabled={Boolean(busyAction)}
+              onClick={() => void handleRelease()}
+            >
+              {busyAction === 'release' ? '반납 중...' : '업무 반납'}
+            </button>
+          )}
           {!isAdmin && plan.status === 'DELIVERING' && (
             <button
               type="button"
@@ -250,6 +294,83 @@ export function PlanDetailPage() {
       </section>
 
       {error && <div className="alert alert-error">{error}</div>}
+
+      {isAdmin && (plan.status === 'OPEN' || plan.status === 'READY') && (
+        <section className="form-card driver-recommendation-card">
+          <div className="section-title section-title-action">
+            <div>
+              <h2>배송 기사 추천</h2>
+              <p>
+                거리·업무량·위험 배송지·위치 신선도를 가중합해 적합도를 계산합니다.
+                추천은 참고용 랭킹이며 실제 수령은 기사가 직접 합니다.
+              </p>
+            </div>
+            <button
+              type="button"
+              className="button button-ghost button-small"
+              disabled={isRecommendingDrivers}
+              onClick={() => void loadDriverRecommendations()}
+            >
+              {isRecommendingDrivers ? '계산 중...' : driverRecommendation ? '다시 계산' : '추천 보기'}
+            </button>
+          </div>
+
+          {driverRecommendationError && (
+            <div className="alert alert-error">{driverRecommendationError}</div>
+          )}
+
+          {driverRecommendation && (
+            driverRecommendation.recommendations.length === 0 ? (
+              <p className="field-help">
+                추천할 수 있는 기사가 없습니다.
+                {driverRecommendation.excludedByClaimLimit > 0
+                  && ` (보유 한도 초과로 제외 ${driverRecommendation.excludedByClaimLimit}명)`}
+              </p>
+            ) : (
+              <>
+                <p className="field-help">
+                  후보 {driverRecommendation.candidateCount}명 중 상위 {driverRecommendation.recommendations.length}명
+                  {driverRecommendation.excludedByClaimLimit > 0
+                    && ` · 보유 한도 초과로 제외 ${driverRecommendation.excludedByClaimLimit}명`}
+                </p>
+                <ol className="recommendation-list">
+                  {driverRecommendation.recommendations.map((driver) => (
+                    <li key={driver.driverId} className="recommendation-item">
+                      <div className="recommendation-head">
+                        <div>
+                          <span className="recommendation-rank">{driver.rank}순위</span>
+                          <strong>{maskName(driver.driverName)}</strong>
+                          <span className="recommendation-login">({maskLoginId(driver.driverLoginId)})</span>
+                        </div>
+                        <span className="recommendation-score">{driver.score}점</span>
+                      </div>
+                      <div className="recommendation-meter" aria-hidden="true">
+                        <span style={{ width: `${driver.score}%` }} />
+                      </div>
+                      <ul className="recommendation-reasons">
+                        {driver.reasons.map((reason) => (
+                          <li key={reason}>{reason}</li>
+                        ))}
+                      </ul>
+                      <dl className="recommendation-features">
+                        {driver.featureScores.map((feature) => (
+                          <div key={feature.feature}>
+                            <dt>{feature.label}</dt>
+                            <dd>
+                              {feature.rawValue}
+                              <small>+{feature.contribution.toFixed(1)}점</small>
+                            </dd>
+                          </div>
+                        ))}
+                      </dl>
+                    </li>
+                  ))}
+                </ol>
+              </>
+            )
+          )}
+        </section>
+      )}
 
       <section className="detail-summary-grid">
         <article>

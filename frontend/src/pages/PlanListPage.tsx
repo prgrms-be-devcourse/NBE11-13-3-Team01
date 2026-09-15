@@ -1,9 +1,20 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router'
-import { getAllDeliveryPlans, getDeliveryPlans } from '../api/deliveryPlans'
+import {
+  getAllDeliveryPlans,
+  getDeliveryPlans,
+  getDeliveryStatistics,
+  getDriverLocations,
+} from '../api/deliveryPlans'
 import { useAuth } from '../auth/AuthContext'
+import { DriverLocationMap } from '../components/DriverLocationMap'
 import { StatusBadge } from '../components/StatusBadge'
-import type { AdminDeliveryPlanSummary, DeliveryPlanSummary } from '../types/api'
+import type {
+  AdminDeliveryPlanSummary,
+  AdminDeliveryStatistics,
+  DeliveryPlanSummary,
+  DriverLocation,
+} from '../types/api'
 import {
   errorMessage,
   formatDateTime,
@@ -15,10 +26,22 @@ type PlanRow = DeliveryPlanSummary | AdminDeliveryPlanSummary
 type PlanView = 'current' | 'completed'
 
 interface DriverPlanGroup {
-  driverId: number
-  driverLoginId: string
-  driverName: string
+  // 미배정(OPEN) 업무는 기사가 없으므로 별도 그룹으로 모은다.
+  key: string
+  driverId: number | null
+  driverLoginId: string | null
+  driverName: string | null
   plans: AdminDeliveryPlanSummary[]
+}
+
+const UNASSIGNED_GROUP_KEY = 'unassigned'
+
+function driverGroupKey(driverId: number | null) {
+  return driverId === null ? UNASSIGNED_GROUP_KEY : String(driverId)
+}
+
+function driverGroupLabel(group: DriverPlanGroup) {
+  return group.driverId === null ? '미배정' : group.driverName ?? '이름 없음'
 }
 
 interface PlanDateGroup {
@@ -104,6 +127,9 @@ export function PlanListPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
   const [planView, setPlanView] = useState<PlanView>('current')
+  const [driverLocations, setDriverLocations] = useState<DriverLocation[]>([])
+  const [adminStatistics, setAdminStatistics] = useState<AdminDeliveryStatistics | null>(null)
+  const [dashboardError, setDashboardError] = useState('')
 
   const loadPlans = useCallback(async () => {
     setError('')
@@ -121,6 +147,46 @@ export function PlanListPage() {
     // oxlint-disable-next-line react/set-state-in-effect -- 목록 데이터는 화면 진입 시 불러온다.
     void loadPlans()
   }, [loadPlans])
+
+  const loadAdminDashboard = useCallback(async () => {
+    if (!isAdmin) return
+
+    const [locationResult, statisticsResult] = await Promise.allSettled([
+      getDriverLocations(),
+      getDeliveryStatistics(),
+    ])
+    const errors: string[] = []
+
+    if (locationResult.status === 'fulfilled') {
+      setDriverLocations(locationResult.value)
+    } else {
+      errors.push(errorMessage(locationResult.reason))
+    }
+
+    if (statisticsResult.status === 'fulfilled') {
+      setAdminStatistics(statisticsResult.value)
+    } else {
+      errors.push(errorMessage(statisticsResult.reason))
+    }
+
+    if (errors.length === 0) {
+      setDashboardError('')
+    } else {
+      setDashboardError([...new Set(errors)].join(' / '))
+    }
+  }, [isAdmin])
+
+  useEffect(() => {
+    if (!isAdmin) return
+
+    // oxlint-disable-next-line react/set-state-in-effect -- 관리자 운영 데이터는 화면 진입 후 API와 동기화한다.
+    void loadAdminDashboard()
+    const intervalId = window.setInterval(() => {
+      void loadAdminDashboard()
+    }, 10_000)
+
+    return () => window.clearInterval(intervalId)
+  }, [isAdmin, loadAdminDashboard])
 
   const todayPlans = useMemo(() => {
     const todayKey = toLocalDateKey(new Date())
@@ -160,33 +226,39 @@ export function PlanListPage() {
   }).format(new Date())
 
   const driverGroups = useMemo(() => {
-    const groups = new Map<number, DriverPlanGroup>()
+    const groups = new Map<string, DriverPlanGroup>()
 
     plans.forEach((plan) => {
       if (!isAdminPlan(plan)) return
 
-      const group = groups.get(plan.driverId)
+      const driverId = plan.driverId ?? null
+      const key = driverGroupKey(driverId)
+      const group = groups.get(key)
       if (group) {
         group.plans.push(plan)
         return
       }
 
-      groups.set(plan.driverId, {
-        driverId: plan.driverId,
-        driverLoginId: plan.driverLoginId,
-        driverName: plan.driverName,
+      groups.set(key, {
+        key,
+        driverId,
+        driverLoginId: plan.driverLoginId ?? null,
+        driverName: plan.driverName ?? null,
         plans: [plan],
       })
     })
 
-    return [...groups.values()].sort((left, right) => (
-      left.driverId - right.driverId
-    ))
+    // 미배정 그룹을 맨 앞에 두어 수령 대기 중인 업무를 먼저 보여준다.
+    return [...groups.values()].sort((left, right) => {
+      if (left.driverId === null) return -1
+      if (right.driverId === null) return 1
+      return left.driverId - right.driverId
+    })
   }, [plans])
 
-  const [selectedDriverId, setSelectedDriverId] = useState<number | null>(null)
+  const [selectedDriverKey, setSelectedDriverKey] = useState<string | null>(null)
   const selectedDriver = driverGroups.find((group) => (
-    group.driverId === selectedDriverId
+    group.key === selectedDriverKey
   )) ?? driverGroups[0] ?? null
   const selectedPlans = isAdmin
     ? selectedDriver?.plans ?? []
@@ -212,6 +284,50 @@ export function PlanListPage() {
           <Link to="/plans/new" className="button button-primary">+ 배송 계획 할당</Link>
         )}
       </section>
+      {isAdmin && (
+        <>
+          <section className="admin-statistics" aria-label="전체 누적 배송 통계">
+            <div className="admin-statistics-heading">
+              <div>
+                <span className="eyebrow">OPERATIONS TOTAL</span>
+                <h2>전체 누적 배송 통계</h2>
+              </div>
+              <span>서버 집계 기준</span>
+            </div>
+            <div className="admin-statistics-grid">
+              <article>
+                <span>전체 계획</span>
+                <strong>{(adminStatistics?.totalPlans ?? 0).toLocaleString()}<em>건</em></strong>
+                <small>대기 {adminStatistics?.readyPlans ?? 0} · 진행 {adminStatistics?.deliveringPlans ?? 0} · 완료 {adminStatistics?.completedPlans ?? 0}</small>
+              </article>
+              <article>
+                <span>완료 배송지</span>
+                <strong>{(adminStatistics?.completedStops ?? 0).toLocaleString()}<em>곳</em></strong>
+                <small>전체 {adminStatistics?.totalStops ?? 0} · 잔여 {adminStatistics?.remainingStops ?? 0}</small>
+              </article>
+              <article>
+                <span>배송 완료 물량</span>
+                <strong>{(adminStatistics?.deliveredBoxes ?? 0).toLocaleString()}<em>박스</em></strong>
+                <small>전체 {adminStatistics?.totalBoxes ?? 0} · 잔여 {adminStatistics?.remainingBoxes ?? 0}</small>
+              </article>
+              <article className="is-danger">
+                <span>현재 위험 배송지</span>
+                <strong>{(adminStatistics?.dangerStops ?? 0).toLocaleString()}<em>곳</em></strong>
+                <small>미완료 배송지 기준</small>
+              </article>
+            </div>
+          </section>
+
+          <DriverLocationMap locations={driverLocations} />
+
+          {dashboardError && (
+            <div className="alert alert-error alert-with-action">
+              <span>실시간 운영 정보를 갱신하지 못했습니다. {dashboardError}</span>
+              <button type="button" onClick={() => void loadAdminDashboard()}>다시 시도</button>
+            </div>
+          )}
+        </>
+      )}
       {isAdmin && (
         <section className="today-overview" aria-label="오늘 배송 운영 현황">
           <div className="today-overview-heading">
@@ -364,7 +480,7 @@ export function PlanListPage() {
               </div>
               <div className="driver-filter-tabs" role="tablist" aria-label="배송 기사 선택">
                 {driverGroups.map((group, index) => {
-                  const isSelected = group.driverId === selectedDriver.driverId
+                  const isSelected = group.key === selectedDriver.key
                   const activeCount = group.plans.filter((plan) => (
                     plan.status !== 'COMPLETED'
                   )).length
@@ -374,17 +490,19 @@ export function PlanListPage() {
                     <button
                       type="button"
                       role="tab"
-                      id={`driver-tab-${group.driverId}`}
+                      id={`driver-tab-${group.key}`}
                       aria-controls="selected-driver-plans"
                       aria-selected={isSelected}
                       className={`driver-filter-button${isSelected ? ' is-active' : ''}`}
-                      key={group.driverId}
-                      onClick={() => setSelectedDriverId(group.driverId)}
-                      aria-label={`기사 ${index + 1}, 진행 및 예정 ${activeCount}건, 배송 완료 ${completedCount}건`}
+                      key={group.key}
+                      onClick={() => setSelectedDriverKey(group.key)}
+                      aria-label={group.driverId === null
+                        ? `미배정 업무, 수령 대기 ${activeCount}건`
+                        : `기사 ${index + 1}, 진행 및 예정 ${activeCount}건, 배송 완료 ${completedCount}건`}
                     >
-                      <span className="driver-filter-order">{group.driverName}</span>
+                      <span className="driver-filter-order">{driverGroupLabel(group)}</span>
                       <span className="driver-filter-identity">
-                        <strong>{maskLoginId(group.driverLoginId)}</strong>
+                        <strong>{group.driverId === null ? '수령 대기' : maskLoginId(group.driverLoginId)}</strong>
                         <small>예정 {activeCount}건, 완료 {completedCount}건, 총 {activeCount + completedCount}건</small>
                       </span>
                       <span className="driver-filter-count">
@@ -403,7 +521,7 @@ export function PlanListPage() {
             id={isAdmin ? 'selected-driver-plans' : undefined}
             role={isAdmin ? 'tabpanel' : undefined}
             aria-labelledby={isAdmin && selectedDriver
-              ? `driver-tab-${selectedDriver.driverId}`
+              ? `driver-tab-${selectedDriver.key}`
               : undefined}
             aria-label={isAdmin ? undefined : '배송 계획 목록'}
           >
@@ -479,9 +597,13 @@ export function PlanListPage() {
                                   : '출발 예정'}
                             </p>
                             {isAdminPlan(plan) && (
-                              <p className="plan-driver">
-                                담당 · <strong>{maskName(plan.driverName)}</strong> ({maskLoginId(plan.driverLoginId)})
-                              </p>
+                              plan.driverId === null ? (
+                                <p className="plan-driver">담당 · <strong>미배정</strong> (기사 수령 대기)</p>
+                              ) : (
+                                <p className="plan-driver">
+                                  담당 · <strong>{maskName(plan.driverName)}</strong> ({maskLoginId(plan.driverLoginId)})
+                                </p>
+                              )
                             )}
                           </div>
                         </div>

@@ -1,5 +1,6 @@
 HELP.md
 .gradle
+.kotlin/
 build/
 !gradle/wrapper/gradle-wrapper.jar
 !**/src/main/**/build/
@@ -37,6 +38,18 @@ out/
 .vscode/
 ### macOS ###
 .DS_Store
+
+# k6 실행 결과물
+k6/summary.md
+k6/summary.json
+k6/summary-contended*
+k6/summary-isolated*
+k6/knee-*.json
+k6/knee-compare-*.md
+k6/*.log
+
+# 네이티브 빌드 산출물
+native/*/build/
 ### 로컬 검증 스크립트 (자격증명 포함) ###
 verify-isolation.sh
 verify-batch-job.sh

@@ -1,4 +1,4 @@
-export type DeliveryPlanStatus = 'READY' | 'DELIVERING' | 'COMPLETED'
+export type DeliveryPlanStatus = 'OPEN' | 'READY' | 'DELIVERING' | 'COMPLETED'
 export type DeliveryStopStatus = 'READY' | 'DELIVERING' | 'COMPLETED'
 export type ProductType = 'NORMAL' | 'REFRIGERATED' | 'FROZEN' | 'FRAGILE'
 export type RiskLevel = 'UNKNOWN' | 'SAFE' | 'CAUTION' | 'DANGER'
@@ -22,10 +22,40 @@ export interface DriverSummary {
   name: string
 }
 
+export interface DriverLocation {
+  driverId: number
+  driverLoginId: string
+  driverName: string
+  latitude: number
+  longitude: number
+  updatedAt: string
+}
+
+export interface UpdateDriverLocationRequest {
+  latitude: number
+  longitude: number
+}
+
+export interface AdminDeliveryStatistics {
+  totalPlans: number
+  openPlans: number
+  readyPlans: number
+  deliveringPlans: number
+  completedPlans: number
+  totalStops: number
+  remainingStops: number
+  completedStops: number
+  totalBoxes: number
+  remainingBoxes: number
+  deliveredBoxes: number
+  dangerStops: number
+}
+
 export interface DeliveryPlanSummary {
   planId: number
   departureLocation: string
   scheduledDepartureAt: string
+  assignedAt: string | null
   actualDepartureAt: string | null
   completedAt: string | null
   status: DeliveryPlanStatus
@@ -37,9 +67,10 @@ export interface DeliveryPlanSummary {
 }
 
 export interface AdminDeliveryPlanSummary extends DeliveryPlanSummary {
-  driverId: number
-  driverLoginId: string
-  driverName: string
+  // 미배정(OPEN) 업무는 수령한 기사가 없으므로 null 이다.
+  driverId: number | null
+  driverLoginId: string | null
+  driverName: string | null
 }
 
 export interface RiskFactor {
@@ -79,6 +110,7 @@ export interface DeliveryPlanDetail {
   departureLatitude: number
   departureLongitude: number
   scheduledDepartureAt: string
+  assignedAt: string | null
   actualDepartureAt: string | null
   status: DeliveryPlanStatus
   completedAt: string | null
@@ -102,10 +134,74 @@ export interface NextStopRecommendation {
 }
 
 export interface AdminDeliveryPlanDetail {
+  driverId: number | null
+  driverLoginId: string | null
+  driverName: string | null
+  deliveryPlan: DeliveryPlanDetail
+}
+
+export interface OpenDeliveryPlan {
+  planId: number
+  departureLocation: string
+  scheduledDepartureAt: string
+  status: DeliveryPlanStatus
+  totalStops: number
+  remainingStops: number
+  totalBoxes: number
+  remainingBoxes: number
+  dangerStops: number
+  /** 전체 공개 시각. null 이면 처음부터 전체 공개된 업무다. */
+  publicAt: string | null
+  /** 내 추천 우선권 순위. 우선권이 없으면 null. */
+  priorityRank: number | null
+  /** 내가 지금 수령할 수 있는지 여부 */
+  claimableNow: boolean
+}
+
+export interface ClaimDeliveryPlanResponse {
+  planId: number
+  driverId: number | null
+  status: DeliveryPlanStatus
+  assignedAt: string | null
+  alreadyOwned: boolean
+  activePlanCount: number
+}
+
+export interface FeatureScore {
+  feature: string
+  label: string
+  rawValue: string
+  weight: number
+  normalized: number
+  contribution: number
+}
+
+export interface RecommendedDriver {
+  rank: number
   driverId: number
   driverLoginId: string
   driverName: string
-  deliveryPlan: DeliveryPlanDetail
+  score: number
+  distanceMeters: number | null
+  estimatedTravelSeconds: number | null
+  locationFresh: boolean
+  locationUpdatedAt: string | null
+  activePlans: number
+  remainingStops: number
+  remainingBoxes: number
+  dangerStops: number
+  reasons: string[]
+  featureScores: FeatureScore[]
+}
+
+export interface DriverRecommendation {
+  planId: number
+  departureLocation: string
+  scheduledDepartureAt: string
+  evaluatedAt: string
+  candidateCount: number
+  excludedByClaimLimit: number
+  recommendations: RecommendedDriver[]
 }
 
 export interface CreateDeliveryItemRequest {
