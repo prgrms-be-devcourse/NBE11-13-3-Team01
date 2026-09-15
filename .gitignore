@@ -50,3 +50,6 @@ k6/*.log
 
 # 네이티브 빌드 산출물
 native/*/build/
+### 로컬 검증 스크립트 (자격증명 포함) ###
+verify-isolation.sh
+verify-batch-job.sh

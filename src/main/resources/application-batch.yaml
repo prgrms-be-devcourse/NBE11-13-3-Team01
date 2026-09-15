@@ -1,0 +1,22 @@
+# 배치 인스턴스. 반드시 한 대만 띄운다.
+# 액추에이터 헬스체크를 위해 웹 서버는 유지하되 포트를 분리한다.
+server:
+  port: ${SERVER_PORT:8081}
+
+spring:
+  batch:
+    job:
+      enabled: false # 기동 시 모든 Job 자동 실행 방지. 스케줄러가 직접 띄운다.
+
+delivery:
+  cleanup:
+    cron: ${CLEANUP_CRON:0 0 4 * * *}
+    retention-days: ${CLEANUP_RETENTION_DAYS:30}
+    chunk-size: 100
+    page-size: 100
+
+batch:
+  metadata:
+    # 배치 메타데이터 테이블 자동 생성 여부.
+    # 운영에서는 false 로 두고 DDL 을 직접 적용한다.
+    initialize-schema: ${BATCH_SCHEMA_INIT:true}
