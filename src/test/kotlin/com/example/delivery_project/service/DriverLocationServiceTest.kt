@@ -31,7 +31,7 @@ class DriverLocationServiceTest {
     @Test
     fun `처음 받은 기사 위치를 등록한다`() {
         whenever(driverLocationRepository.findByDriverId(7L)).thenReturn(null)
-        whenever(userRepository.findUserById(7L)).thenReturn(driver)
+        whenever(userRepository.findUserByIdAndDeletedAtIsNull(7L)).thenReturn(driver)
         whenever(driverLocationRepository.save(any<DriverLocation>())).thenAnswer { it.arguments[0] as DriverLocation }
 
         val response = service.updateLocation(7L, UpdateDriverLocationRequest(37.5665, 126.9780))

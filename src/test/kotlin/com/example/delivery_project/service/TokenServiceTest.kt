@@ -1,7 +1,9 @@
 package com.example.delivery_project.service
 
+import com.example.delivery_project.domain.entity.token.RefreshToken
 import com.example.delivery_project.domain.entity.user.User
 import com.example.delivery_project.domain.repository.RefreshTokenRedisRepository
+import com.example.delivery_project.domain.repository.RefreshTokenRepository
 import com.example.delivery_project.domain.repository.UserRepository
 import com.example.delivery_project.enums.Role
 import com.example.delivery_project.exception.AuthException
@@ -9,6 +11,7 @@ import com.example.delivery_project.exception.global.BusinessException
 import com.example.delivery_project.security.jwt.JwtProperties
 import com.example.delivery_project.security.jwt.TokenProvider
 import com.example.delivery_project.security.jwt.TokenStatus
+import com.example.delivery_project.security.token.RefreshTokenHasher
 import com.example.delivery_project.util.CookieUtil
 import jakarta.servlet.http.Cookie
 import org.assertj.core.api.Assertions.assertThat
@@ -19,16 +22,23 @@ import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.InjectMocks
 import org.mockito.Mock
 import org.mockito.junit.jupiter.MockitoExtension
+import org.mockito.kotlin.any
+import org.mockito.kotlin.argumentCaptor
+import org.mockito.kotlin.eq
+import org.mockito.kotlin.never
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import java.time.Duration
+import java.time.LocalDateTime
 
 @ExtendWith(MockitoExtension::class)
 class TokenServiceTest {
     @Mock lateinit var tokenProvider: TokenProvider
     @Mock lateinit var jwtProperties: JwtProperties
+    @Mock lateinit var refreshTokenRepository: RefreshTokenRepository
     @Mock lateinit var refreshTokenRedisRepository: RefreshTokenRedisRepository
     @Mock lateinit var userRepository: UserRepository
+    @Mock lateinit var refreshTokenHasher: RefreshTokenHasher
     @InjectMocks lateinit var tokenService: TokenService
     private lateinit var user: User
 
@@ -38,14 +48,38 @@ class TokenServiceTest {
     }
 
     @Test
-    fun 토큰을_발급하고_RefreshToken을_Redis에_저장한다() {
+    fun 토큰을_발급하면_RDB에_해시를_저장하고_Redis에도_캐싱한다() {
         givenTokenProperties()
         whenever(tokenProvider.generateToken(user, ACCESS_VALIDITY)).thenReturn("access-token")
         whenever(tokenProvider.generateToken(user, REFRESH_VALIDITY)).thenReturn("refresh-token")
+        whenever(refreshTokenHasher.hash("refresh-token")).thenReturn("hashed-refresh-token")
+        whenever(refreshTokenRepository.findByUserId(1L)).thenReturn(null)
+        whenever(refreshTokenRepository.save(any<RefreshToken>())).thenAnswer { it.arguments[0] }
+
         val pair = tokenService.issueToken(user)
+
         assertThat(pair.accessToken).isEqualTo("access-token")
         assertThat(pair.refreshToken).isEqualTo("refresh-token")
-        verify(refreshTokenRedisRepository).save(1L, "refresh-token", REFRESH_VALIDITY)
+        val captor = argumentCaptor<RefreshToken>()
+        verify(refreshTokenRepository).save(captor.capture())
+        assertThat(captor.firstValue.tokenHash).isEqualTo("hashed-refresh-token")
+        verify(refreshTokenRedisRepository).save(1L, "hashed-refresh-token", REFRESH_VALIDITY)
+    }
+
+    @Test
+    fun 이미_RefreshToken_row가_있으면_새로_저장하지_않고_갱신한다() {
+        givenTokenProperties()
+        val existing = RefreshToken.of(user, "old-hash", LocalDateTime.now().minusDays(1))
+        whenever(tokenProvider.generateToken(user, ACCESS_VALIDITY)).thenReturn("access-token")
+        whenever(tokenProvider.generateToken(user, REFRESH_VALIDITY)).thenReturn("refresh-token")
+        whenever(refreshTokenHasher.hash("refresh-token")).thenReturn("new-hash")
+        whenever(refreshTokenRepository.findByUserId(1L)).thenReturn(existing)
+
+        tokenService.issueToken(user)
+
+        assertThat(existing.tokenHash).isEqualTo("new-hash")
+        verify(refreshTokenRepository, never()).save(any())
+        verify(refreshTokenRedisRepository).save(1L, "new-hash", REFRESH_VALIDITY)
     }
 
     @Test
@@ -53,14 +87,43 @@ class TokenServiceTest {
         givenTokenProperties()
         whenever(tokenProvider.validateToken("old-refresh-token")).thenReturn(TokenStatus.VALID)
         whenever(tokenProvider.getTokenDetails("old-refresh-token")).thenReturn(user)
-        whenever(refreshTokenRedisRepository.findByUserId(1L)).thenReturn("old-refresh-token")
-        whenever(userRepository.findUserById(1L)).thenReturn(user)
+        whenever(refreshTokenRedisRepository.findByUserId(1L)).thenReturn("old-hash")
+        whenever(refreshTokenHasher.hash("old-refresh-token")).thenReturn("old-hash")
+        whenever(userRepository.findUserByIdAndDeletedAtIsNull(1L)).thenReturn(user)
+        whenever(refreshTokenRepository.findByUserId(1L)).thenReturn(null)
+        whenever(refreshTokenRepository.save(any<RefreshToken>())).thenAnswer { it.arguments[0] }
         whenever(tokenProvider.generateToken(user, ACCESS_VALIDITY)).thenReturn("new-access-token")
         whenever(tokenProvider.generateToken(user, REFRESH_VALIDITY)).thenReturn("new-refresh-token")
+        whenever(refreshTokenHasher.hash("new-refresh-token")).thenReturn("new-hash")
+
         val pair = tokenService.refreshToken(cookies("old-refresh-token"))
+
         assertThat(pair.accessToken).isEqualTo("new-access-token")
         assertThat(pair.refreshToken).isEqualTo("new-refresh-token")
-        verify(refreshTokenRedisRepository).save(1L, "new-refresh-token", REFRESH_VALIDITY)
+        verify(refreshTokenRedisRepository).save(1L, "new-hash", REFRESH_VALIDITY)
+    }
+
+    @Test
+    fun Redis가_MISS여도_RDB에_있으면_재발급에_성공하고_Redis에_재캐싱한다() {
+        givenTokenProperties()
+        val stored = RefreshToken.of(user, "old-hash", LocalDateTime.now().plusDays(3))
+        whenever(tokenProvider.validateToken("old-refresh-token")).thenReturn(TokenStatus.VALID)
+        whenever(tokenProvider.getTokenDetails("old-refresh-token")).thenReturn(user)
+        whenever(refreshTokenRedisRepository.findByUserId(1L)).thenReturn(null)
+        whenever(refreshTokenRepository.findByUserId(1L)).thenReturn(stored)
+        whenever(refreshTokenHasher.hash("old-refresh-token")).thenReturn("old-hash")
+        whenever(userRepository.findUserByIdAndDeletedAtIsNull(1L)).thenReturn(user)
+        whenever(tokenProvider.generateToken(user, ACCESS_VALIDITY)).thenReturn("new-access-token")
+        whenever(tokenProvider.generateToken(user, REFRESH_VALIDITY)).thenReturn("new-refresh-token")
+        whenever(refreshTokenHasher.hash("new-refresh-token")).thenReturn("new-hash")
+
+        val pair = tokenService.refreshToken(cookies("old-refresh-token"))
+
+        assertThat(pair.accessToken).isEqualTo("new-access-token")
+        // RDB fallback으로 조회한 tokenHash를 남은 TTL로 Redis에 재캐싱
+        verify(refreshTokenRedisRepository).save(eq(1L), eq("old-hash"), any())
+        // 이후 rotation으로 새 토큰이 다시 캐싱됨
+        verify(refreshTokenRedisRepository).save(1L, "new-hash", REFRESH_VALIDITY)
     }
 
     @Test
@@ -81,33 +144,37 @@ class TokenServiceTest {
     }
 
     @Test
-    fun Redis에_RefreshToken이_없으면_재발급을_거부한다() {
+    fun Redis와_RDB_모두에_RefreshToken이_없으면_재발급을_거부한다() {
         whenever(tokenProvider.validateToken("refresh-token")).thenReturn(TokenStatus.VALID)
         whenever(tokenProvider.getTokenDetails("refresh-token")).thenReturn(user)
         whenever(refreshTokenRedisRepository.findByUserId(1L)).thenReturn(null)
+        whenever(refreshTokenRepository.findByUserId(1L)).thenReturn(null)
         assertAuthException(AuthException.INVALID_REFRESH_TOKEN) { tokenService.refreshToken(cookies("refresh-token")) }
     }
 
     @Test
-    fun Redis에_저장된_RefreshToken과_다르면_재발급을_거부한다() {
+    fun 서버에_저장된_RefreshToken_해시와_다르면_재발급을_거부한다() {
         whenever(tokenProvider.validateToken("old-refresh-token")).thenReturn(TokenStatus.VALID)
         whenever(tokenProvider.getTokenDetails("old-refresh-token")).thenReturn(user)
-        whenever(refreshTokenRedisRepository.findByUserId(1L)).thenReturn("new-refresh-token")
+        whenever(refreshTokenRedisRepository.findByUserId(1L)).thenReturn("stored-hash")
+        whenever(refreshTokenHasher.hash("old-refresh-token")).thenReturn("different-hash")
         assertAuthException(AuthException.INVALID_REFRESH_TOKEN) { tokenService.refreshToken(cookies("old-refresh-token")) }
     }
 
     @Test
-    fun RefreshToken의_User가_DB에_없으면_재발급을_거부한다() {
+    fun RefreshToken의_User가_탈퇴했거나_DB에_없으면_재발급을_거부한다() {
         whenever(tokenProvider.validateToken("refresh-token")).thenReturn(TokenStatus.VALID)
         whenever(tokenProvider.getTokenDetails("refresh-token")).thenReturn(user)
-        whenever(refreshTokenRedisRepository.findByUserId(1L)).thenReturn("refresh-token")
-        whenever(userRepository.findUserById(1L)).thenReturn(null)
+        whenever(refreshTokenRedisRepository.findByUserId(1L)).thenReturn("hash")
+        whenever(refreshTokenHasher.hash("refresh-token")).thenReturn("hash")
+        whenever(userRepository.findUserByIdAndDeletedAtIsNull(1L)).thenReturn(null)
         assertAuthException(AuthException.INVALID_REFRESH_TOKEN) { tokenService.refreshToken(cookies("refresh-token")) }
     }
 
     @Test
-    fun 로그아웃하면_Redis의_RefreshToken을_삭제한다() {
+    fun 로그아웃하면_RDB와_Redis의_RefreshToken을_모두_삭제한다() {
         tokenService.logout(1L)
+        verify(refreshTokenRepository).deleteByUserId(1L)
         verify(refreshTokenRedisRepository).deleteByUserId(1L)
     }
 

@@ -23,7 +23,7 @@ class CustomUserDetailsServiceTest {
             name = "배송기사",
             role = Role.ROLE_DELIVERY_DRIVER,
         )
-        whenever(userRepository.findByLoginId("driver")).thenReturn(user)
+        whenever(userRepository.findByLoginIdAndDeletedAtIsNull("driver")).thenReturn(user)
 
         val result = userDetailsService.loadUserByUsername("driver")
 
@@ -32,7 +32,7 @@ class CustomUserDetailsServiceTest {
 
     @Test
     fun `사용자가 없으면 UsernameNotFoundException이 발생한다`() {
-        whenever(userRepository.findByLoginId("missing")).thenReturn(null)
+        whenever(userRepository.findByLoginIdAndDeletedAtIsNull("missing")).thenReturn(null)
 
         assertThatThrownBy { userDetailsService.loadUserByUsername("missing") }
             .isInstanceOf(UsernameNotFoundException::class.java)

@@ -57,7 +57,7 @@ class DeliveryPlanCreationFacadeTest {
     @Test
     fun 주소를_좌표로_변환해_계획을_저장하고_생성_이벤트를_발행한다() {
         val driver = User.of(7L, "driver", "password", "배송기사", Role.ROLE_DELIVERY_DRIVER)
-        whenever(userRepository.findUserById(7L)).thenReturn(driver)
+        whenever(userRepository.findUserByIdAndDeletedAtIsNull(7L)).thenReturn(driver)
         whenever(userRepository.findUserByIdForUpdate(7L)).thenReturn(driver)
         whenever(geocodingClient.geocode("서울 물류센터"))
             .thenReturn(GeocodedLocation("서울 물류센터", 37.50, 126.90))
@@ -91,21 +91,21 @@ class DeliveryPlanCreationFacadeTest {
 
     @Test
     fun 존재하지_않는_기사로는_배송계획을_생성할_수_없다() {
-        whenever(userRepository.findUserById(999L)).thenReturn(null)
+        whenever(userRepository.findUserByIdAndDeletedAtIsNull(999L)).thenReturn(null)
         assertCannotCreate(999L)
     }
 
     @Test
     fun 관리자에게는_배송계획을_할당할_수_없다() {
         val admin = User.of(1L, "admin", "password", "관리자", Role.ROLE_ADMIN)
-        whenever(userRepository.findUserById(1L)).thenReturn(admin)
+        whenever(userRepository.findUserByIdAndDeletedAtIsNull(1L)).thenReturn(admin)
         assertCannotCreate(1L)
     }
 
     @Test
     fun 동시_보유_한도를_넘긴_기사에게는_직접_할당할_수_없다() {
         val driver = User.of(7L, "driver", "password", "배송기사", Role.ROLE_DELIVERY_DRIVER)
-        whenever(userRepository.findUserById(7L)).thenReturn(driver)
+        whenever(userRepository.findUserByIdAndDeletedAtIsNull(7L)).thenReturn(driver)
         whenever(userRepository.findUserByIdForUpdate(7L)).thenReturn(driver)
         whenever(geocodingClient.geocode("서울 물류센터"))
             .thenReturn(GeocodedLocation("서울 물류센터", 37.50, 126.90))

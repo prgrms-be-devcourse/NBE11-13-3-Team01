@@ -13,13 +13,9 @@ import com.example.delivery_project.security.jwt.TokenStatus
 import com.example.delivery_project.security.token.RefreshTokenHasher
 import com.example.delivery_project.util.CookieUtil
 import jakarta.servlet.http.Cookie
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
-import kotlinx.coroutines.supervisorScope
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
-import org.springframework.transaction.support.TransactionTemplate
 import java.time.Duration
 import java.time.LocalDateTime
 
@@ -31,8 +27,7 @@ class TokenService(
     private val refreshTokenRedisRepository: RefreshTokenRedisRepository,
     private val userRepository: UserRepository,
     private val refreshTokenHasher: RefreshTokenHasher,
-    private val transactionTemplate: TransactionTemplate
-    ) {
+) {
     private val log = LoggerFactory.getLogger(javaClass)
 
     data class TokenPair(val accessToken: String, val refreshToken: String)
@@ -135,38 +130,11 @@ class TokenService(
     }
 
     // 로그아웃
-    // 코루틴 활용하여 DB, Redis의 회원 정보 삭제를 병렬 실행
-    suspend fun logout(userId: Long) = supervisorScope {
-
-        val dbDelete = async(Dispatchers.IO) {
-            runCatching {
-                transactionTemplate.executeWithoutResult {
-                    refreshTokenRepository.deleteByUserId(userId)
-                }
-            }
-        }
-
-        val redisDelete = async(Dispatchers.IO) {
-            runCatching {
-                refreshTokenRedisRepository.deleteByUserId(userId)
-            }
-        }
-
-        val dbResult = dbDelete.await()
-        val redisResult = redisDelete.await()
-
-        // 둘 중 하나라도 실패하면 로그아웃 실패
-        if (dbResult.isFailure || redisResult.isFailure) {
-            log.error(
-                "[AUTH] 로그아웃 처리 실패. userId={}, dbSuccess={}, redisSuccess={}",
-                userId,
-                dbResult.isSuccess,
-                redisResult.isSuccess,
-            )
-
-            throw dbResult.exceptionOrNull()
-                ?: redisResult.exceptionOrNull()!!
-        }
+    // TODO: DB/Redis 삭제를 코루틴으로 병렬 처리 (추후 별도 작업으로 적용 예정)
+    @Transactional
+    fun logout(userId: Long) {
+        refreshTokenRepository.deleteByUserId(userId)
+        refreshTokenRedisRepository.deleteByUserId(userId)
 
         log.info(
             "[AUTH] 로그아웃 처리 완료 userId: {}",

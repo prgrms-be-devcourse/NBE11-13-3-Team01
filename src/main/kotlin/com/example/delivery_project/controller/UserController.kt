@@ -92,7 +92,11 @@ class UserController(
         return UserInfoResponse(requireNotNull(user.id), user.loginId, user.name, user.role)
     }
 
-    // TODO : Swagger 추가 필요, 응답 값 DTO 필요 없나??
+    @Operation(summary = "회원 탈퇴", description = "현재 로그인한 사용자를 탈퇴 처리(soft delete)하고, 저장된 Refresh Token과 쿠키를 삭제합니다.")
+    @ApiResponses(value = [
+        ApiResponse(responseCode = "200", description = "회원 탈퇴 성공"),
+        ApiResponse(responseCode = "401", description = "인증 필요"),
+    ])
     @DeleteMapping("/me")
     fun withdraw(
         @Parameter(hidden = true)

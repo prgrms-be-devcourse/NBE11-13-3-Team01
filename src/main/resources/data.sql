@@ -92,8 +92,8 @@ VALUES
 CREATE TABLE refresh_token (
                                id       BIGINT AUTO_INCREMENT PRIMARY KEY,
                                user_id  BIGINT NOT NULL,
-                               token_hash    VARCHAR(1000) CHARACTER SET ascii NOT NULL,
-                               expires_at    DATETIME(6),
+                               token_hash    VARCHAR(64) CHARACTER SET ascii NOT NULL,
+                               expires_at    DATETIME(6) NOT NULL,
 
                                CONSTRAINT uk_refresh_token_user UNIQUE (user_id),
                                CONSTRAINT uk_refresh_token_token UNIQUE (token_hash),

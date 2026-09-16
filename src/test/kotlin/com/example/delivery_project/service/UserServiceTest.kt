@@ -78,6 +78,25 @@ class UserServiceTest {
         verify(tokenService, never()).issueToken(any())
     }
 
+    @Test
+    fun 회원_탈퇴하면_soft_delete되고_RefreshToken을_로그아웃한다() {
+        val user = User.of(1L, "driver", "encoded", "배송기사", Role.ROLE_DELIVERY_DRIVER)
+        whenever(userRepository.findUserByIdAndDeletedAtIsNull(1L)).thenReturn(user)
+
+        userService.withdraw(1L)
+
+        assertThat(user.isWithdrawn()).isTrue()
+        verify(tokenService).logout(1L)
+    }
+
+    @Test
+    fun 이미_탈퇴했거나_존재하지_않는_회원은_탈퇴할_수_없다() {
+        whenever(userRepository.findUserByIdAndDeletedAtIsNull(1L)).thenReturn(null)
+
+        assertAuthException(AuthException.AUTHENTICATION_REQUIRED) { userService.withdraw(1L) }
+        verify(tokenService, never()).logout(any())
+    }
+
     private fun assertAuthException(expected: AuthException, action: () -> Unit) {
         assertThat(assertThrows<BusinessException>(action).errorCode).isEqualTo(expected)
     }

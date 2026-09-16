@@ -5,6 +5,7 @@ import com.example.delivery_project.dto.projection.DeliveryPlanSummaryProjection
 import com.example.delivery_project.dto.projection.DeliveryStatisticsProjection
 import com.example.delivery_project.dto.projection.OpenDeliveryPlanSummaryProjection
 import com.example.delivery_project.enums.DeliveryPlanStatus
+import org.springframework.data.domain.Pageable
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
