@@ -1,7 +1,7 @@
 -- ============================================================
 -- delivery_service DB 및 테이블 생성 스크립트
 -- 엔티티 기준: User, DriverLocation, DeliveryPlan, DeliveryStop, DeliveryItem,
---             RiskAssessment, RiskFactor, Weather
+--             RiskAssessment, RiskFactor, Weather, RefreshToken
 -- ============================================================
 
 CREATE DATABASE IF NOT EXISTS delivery_service
@@ -18,7 +18,6 @@ DROP TABLE IF EXISTS delivery_stop;
 DROP TABLE IF EXISTS delivery_plan_priority_driver;
 DROP TABLE IF EXISTS delivery_plan;
 DROP TABLE IF EXISTS driver_location;
--- 기존 RDB Refresh Token 테이블 제거용
 DROP TABLE IF EXISTS refresh_token;
 DROP TABLE IF EXISTS users;
 DROP TABLE IF EXISTS weather;
@@ -85,6 +84,21 @@ VALUES
         '기사3',
         'ROLE_DELIVERY_DRIVER'
     );
+
+-- ------------------------------------------------------------
+-- refresh_token
+-- ------------------------------------------------------------
+CREATE TABLE refresh_token (
+                               id       BIGINT AUTO_INCREMENT PRIMARY KEY,
+                               user_id  BIGINT NOT NULL,
+                               token    VARCHAR(1000) CHARACTER SET ascii NOT NULL,
+
+                               CONSTRAINT uk_refresh_token_user UNIQUE (user_id),
+                               CONSTRAINT uk_refresh_token_token UNIQUE (token),
+
+                               CONSTRAINT fk_refresh_token_user
+                                   FOREIGN KEY (user_id) REFERENCES users (id)
+) ENGINE=InnoDB;
 
 -- ------------------------------------------------------------
 -- driver_location (기사별 최신 위치 한 건)
