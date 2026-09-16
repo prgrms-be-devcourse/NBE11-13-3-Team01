@@ -70,6 +70,24 @@ class DeliveryPlan private constructor(
     val deliveryStops: List<DeliveryStop>
         get() = deliveryStopEntities.toList()
 
+    /**
+     * 우선 수령 권한은 배송 계획에 종속된 기록이다. 계획이 사라지면 함께 사라져야 한다.
+     *
+     * 이 매핑이 없으면 JPA 가 이 테이블의 존재를 모르고 계획부터 지우려 들어
+     * 외래키 제약에 걸린다. 그 예외는 커밋 시점에 터지므로 배치의 skip 으로도 넘길 수 없고,
+     * 정리 배치가 통째로 실패한다.
+     */
+    @field:OneToMany(
+        mappedBy = "deliveryPlan",
+        cascade = [CascadeType.ALL],
+        orphanRemoval = true,
+    )
+    @field:OrderBy("priorityRank ASC")
+    private var priorityDriverEntities: MutableList<DeliveryPlanPriorityDriver> = mutableListOf()
+
+    val priorityDrivers: List<DeliveryPlanPriorityDriver>
+        get() = priorityDriverEntities.toList()
+
     @field:Column(nullable = false)
     var departureLocation: String = departureLocation
         protected set
