@@ -31,6 +31,7 @@ CREATE TABLE users (
                        password  VARCHAR(255) NOT NULL,
                        name      VARCHAR(255) NOT NULL,
                        role      VARCHAR(30)  NOT NULL,
+                       deleted_at DATETIME(6) NULL,
                        CONSTRAINT uk_users_login_id UNIQUE (login_id)
 ) ENGINE=InnoDB;
 
@@ -91,10 +92,11 @@ VALUES
 CREATE TABLE refresh_token (
                                id       BIGINT AUTO_INCREMENT PRIMARY KEY,
                                user_id  BIGINT NOT NULL,
-                               token    VARCHAR(1000) CHARACTER SET ascii NOT NULL,
+                               token_hash    VARCHAR(1000) CHARACTER SET ascii NOT NULL,
+                               expires_at    DATETIME(6),
 
                                CONSTRAINT uk_refresh_token_user UNIQUE (user_id),
-                               CONSTRAINT uk_refresh_token_token UNIQUE (token),
+                               CONSTRAINT uk_refresh_token_token UNIQUE (token_hash),
 
                                CONSTRAINT fk_refresh_token_user
                                    FOREIGN KEY (user_id) REFERENCES users (id)

@@ -9,6 +9,7 @@ import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
 import jakarta.persistence.Table
+import java.time.LocalDateTime
 
 @Entity
 @Table(name = "users")
@@ -41,6 +42,10 @@ class User(
     var role: Role = role
         protected set
 
+    @field:Column(name = "deleted_at")
+    var deletedAt: LocalDateTime? = null
+        protected set
+
     companion object {
         fun of(
             id: Long?,
@@ -63,4 +68,11 @@ class User(
             name: String,
         ): User = User(null, loginId, password, name, Role.ROLE_DELIVERY_DRIVER)
     }
+
+    fun withdraw() {
+        deletedAt = LocalDateTime.now()
+    }
+
+    fun isWithdrawn(): Boolean =
+        deletedAt != null
 }

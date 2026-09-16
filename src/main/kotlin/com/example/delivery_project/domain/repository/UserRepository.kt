@@ -10,8 +10,12 @@ import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
 
 interface UserRepository : JpaRepository<User, Long> {
-    @Query("select u from User u where u.id = :id")
-    fun findUserById(id: Long): User?
+    // @Query("select u from User u where u.id = :id")
+    // fun findUserById(id: Long): User?
+
+    // 탈퇴 여부 확인을 포함 - 재발급 시 사용
+    @Query("select u from User u where u.id = :id AND u.deletedAt IS NULL")
+    fun findUserByIdAndDeletedAtIsNull(id: Long): User?
 
     /**
      * 기사 행 자체를 비관적으로 잠근다.
@@ -28,7 +32,10 @@ interface UserRepository : JpaRepository<User, Long> {
 
     fun existsByLoginId(loginId: String): Boolean
 
-    fun findByLoginId(loginId: String): User?
+    // fun findByLoginId(loginId: String): User?
+
+    // 탈퇴 여부 확인을 포함 - 로그인 시 사용
+    fun findByLoginIdAndDeletedAtIsNull(loginId: String): User?
 
     fun findAllByRoleOrderByNameAsc(role: Role): List<User>
 

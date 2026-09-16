@@ -49,7 +49,7 @@ class DriverLocationService(
         driverLocationRepository.findAllWithDriverOrderByUpdatedAtDesc().map(DriverLocationResponse::from)
 
     private fun findDriver(driverId: Long) =
-        userRepository.findUserById(driverId)
+        userRepository.findUserByIdAndDeletedAtIsNull(driverId)
             ?.takeIf { it.role == Role.ROLE_DELIVERY_DRIVER }
             ?: throw BusinessException(DeliveryException.DELIVERY_DRIVER_NOT_FOUND)
 }

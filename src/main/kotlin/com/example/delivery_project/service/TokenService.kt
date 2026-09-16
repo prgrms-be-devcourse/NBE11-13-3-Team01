@@ -10,11 +10,18 @@ import com.example.delivery_project.exception.global.BusinessException
 import com.example.delivery_project.security.jwt.JwtProperties
 import com.example.delivery_project.security.jwt.TokenProvider
 import com.example.delivery_project.security.jwt.TokenStatus
+import com.example.delivery_project.security.token.RefreshTokenHasher
 import com.example.delivery_project.util.CookieUtil
 import jakarta.servlet.http.Cookie
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.supervisorScope
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.transaction.support.TransactionTemplate
+import java.time.Duration
+import java.time.LocalDateTime
 
 @Service
 class TokenService(
@@ -23,7 +30,9 @@ class TokenService(
     private val refreshTokenRepository: RefreshTokenRepository,
     private val refreshTokenRedisRepository: RefreshTokenRedisRepository,
     private val userRepository: UserRepository,
-) {
+    private val refreshTokenHasher: RefreshTokenHasher,
+    private val transactionTemplate: TransactionTemplate
+    ) {
     private val log = LoggerFactory.getLogger(javaClass)
 
     data class TokenPair(val accessToken: String, val refreshToken: String)
@@ -32,27 +41,32 @@ class TokenService(
     fun issueToken(user: User): TokenPair {
         val accessToken = tokenProvider.generateToken(user, jwtProperties.accessTokenValidity)
         val refreshToken = tokenProvider.generateToken(user, jwtProperties.refreshTokenValidity)
+
+        // DB와 Redis에 refresh token의 해시값을 저장
+        val tokenHash = refreshTokenHasher.hash(refreshToken)
+        val expiresAt = LocalDateTime.now().plus(jwtProperties.refreshTokenValidity)
+
         // DB와 Redis 모두 저장
-        saveRefreshToken(user, refreshToken)
-        // refreshTokenRedisRepository.save(requireNotNull(user.id), refreshToken, jwtProperties.refreshTokenValidity)
+        saveRefreshToken(user, tokenHash, expiresAt)
         log.debug("Token issued. userId: {}", user.id)
         return TokenPair(accessToken, refreshToken)
     }
 
-    // Refresh Token의 원본은 DB에 저장, 동일 값을 Redis에도 캐싱
-    private fun saveRefreshToken(user: User, token: String) {
+    // 해싱된 Refresh Token의 원본은 DB에 저장, 동일 값을 Redis에도 캐싱
+    private fun saveRefreshToken(user: User, tokenHash: String, expiresAt: LocalDateTime) {
         val userId = requireNotNull(user.id)
         val storedRefreshToken = refreshTokenRepository.findByUserId(userId)
 
         if (storedRefreshToken == null) {
-            refreshTokenRepository.save(RefreshToken.of(user, token))
+            refreshTokenRepository.save(RefreshToken.of(user, tokenHash, expiresAt))
         } else {
-            storedRefreshToken.updateToken(token)
+            storedRefreshToken.update(tokenHash, expiresAt)
         }
 
-        refreshTokenRedisRepository.save(userId, token, jwtProperties.refreshTokenValidity)
+        refreshTokenRedisRepository.save(userId, tokenHash, jwtProperties.refreshTokenValidity)
     }
 
+    // 재발급
     @Transactional
     fun refreshToken(cookies: Array<Cookie>?): TokenPair {
         val refreshToken = cookies?.firstOrNull { it.name == CookieUtil.REFRESH_TOKEN_COOKIE }?.value
@@ -68,20 +82,21 @@ class TokenService(
         // 2. 검증된 JWT에서 userId 추출
         val userId = requireNotNull(tokenProvider.getTokenDetails(refreshToken).id)
 
-        // 3. 서버가 보유한 Refresh Token 조회
+        // 3. 서버가 보유한 Refresh Token(이미 해싱된 상태) 조회
         // Redis Hit -> Redis 사용
         // Redis Miss -> DB 조회 후 Redis 캐싱
         val storedRefreshToken = findStoredRefreshToken(userId)
         // val storedRefreshToken = refreshTokenRedisRepository.findByUserId(userId)
             ?: throw BusinessException(AuthException.INVALID_REFRESH_TOKEN)
 
-        // 4. 요청 RT와 서버 보유 RT 비교
-        if (storedRefreshToken != refreshToken) {
+        // 4. 요청(쿠키) Refresh Token을 직접 해싱한 값과 서버 보유 Refresh Token(이미 해싱된 상태) 비교
+        val tokenHash = refreshTokenHasher.hash(refreshToken)
+        if (storedRefreshToken != tokenHash) {
             throw BusinessException(AuthException.INVALID_REFRESH_TOKEN)
         }
 
         // 5. 현재 DB의 User 조회
-        val user = userRepository.findUserById(userId)
+        val user = userRepository.findUserByIdAndDeletedAtIsNull(userId)
             ?: throw BusinessException(AuthException.INVALID_REFRESH_TOKEN)
 
         // 6. Rotation
@@ -98,31 +113,64 @@ class TokenService(
 
         val cachedToken = refreshTokenRedisRepository.findByUserId(userId)
 
+        // Cache Hit
         if (cachedToken != null) {
             return cachedToken
         }
 
+        // Cache Miss -> DB 조회 후 Redis 캐싱
         val storedRefreshToken = refreshTokenRepository
                 .findByUserId(userId)
                 ?: throw BusinessException(AuthException.INVALID_REFRESH_TOKEN)
 
-        refreshTokenRedisRepository.save(
-            userId,
-            storedRefreshToken.token,
-            jwtProperties.refreshTokenValidity,
-        )
+        // DB에 저장된 expiresAt 기준으로 현재 남은 기간 계산하여 TTL로 설정
+        val remainingTTL = Duration.between(LocalDateTime.now(), storedRefreshToken.expiresAt)
+        if (remainingTTL.isZero || remainingTTL.isNegative) {
+            throw BusinessException(AuthException.EXPIRED_REFRESH_TOKEN)
+        }
 
-        return storedRefreshToken.token
+        refreshTokenRedisRepository.save(userId, storedRefreshToken.tokenHash, remainingTTL)
+
+        return storedRefreshToken.tokenHash
     }
 
-    @Transactional
-    fun logout(userId: Long) {
-        // TODO : 코루틴 병렬 처리
-        // DB의 원본 삭제
-        refreshTokenRepository.deleteByUserId(userId)
-        // Redis 캐시 삭제
-        refreshTokenRedisRepository.deleteByUserId(userId)
+    // 로그아웃
+    // 코루틴 활용하여 DB, Redis의 회원 정보 삭제를 병렬 실행
+    suspend fun logout(userId: Long) = supervisorScope {
 
-        log.info("[AUTH] 로그아웃 처리 완료 userId: {}", userId)
+        val dbDelete = async(Dispatchers.IO) {
+            runCatching {
+                transactionTemplate.executeWithoutResult {
+                    refreshTokenRepository.deleteByUserId(userId)
+                }
+            }
+        }
+
+        val redisDelete = async(Dispatchers.IO) {
+            runCatching {
+                refreshTokenRedisRepository.deleteByUserId(userId)
+            }
+        }
+
+        val dbResult = dbDelete.await()
+        val redisResult = redisDelete.await()
+
+        // 둘 중 하나라도 실패하면 로그아웃 실패
+        if (dbResult.isFailure || redisResult.isFailure) {
+            log.error(
+                "[AUTH] 로그아웃 처리 실패. userId={}, dbSuccess={}, redisSuccess={}",
+                userId,
+                dbResult.isSuccess,
+                redisResult.isSuccess,
+            )
+
+            throw dbResult.exceptionOrNull()
+                ?: redisResult.exceptionOrNull()!!
+        }
+
+        log.info(
+            "[AUTH] 로그아웃 처리 완료 userId: {}",
+            userId,
+        )
     }
 }

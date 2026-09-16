@@ -48,4 +48,18 @@ class UserService(
             throw BusinessException(AuthException.INVALID_LOGIN)
         }
     }
+
+    @Transactional
+    fun withdraw(userId: Long) {
+
+        val user = userRepository.findUserByIdAndDeletedAtIsNull(userId)
+                    ?: throw BusinessException(AuthException.AUTHENTICATION_REQUIRED)
+
+        // deletedAt 필드 변경, 로그아웃
+        user.withdraw()
+        tokenService.logout(userId)
+
+        log.info("[USER] 회원 탈퇴 완료 userId: {}, loginId: {}", user.id, user.loginId)
+
+    }
 }

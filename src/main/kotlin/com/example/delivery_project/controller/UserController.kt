@@ -18,6 +18,7 @@ import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import jakarta.validation.Valid
 import org.springframework.security.core.annotation.AuthenticationPrincipal
+import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
@@ -89,5 +90,25 @@ class UserController(
     ): UserInfoResponse {
         val user = userDetails.user
         return UserInfoResponse(requireNotNull(user.id), user.loginId, user.name, user.role)
+    }
+
+    // TODO : Swagger 추가 필요, 응답 값 DTO 필요 없나??
+    @DeleteMapping("/me")
+    fun withdraw(
+        @Parameter(hidden = true)
+        @AuthenticationPrincipal
+        userDetails: CustomUserDetails,
+
+        @Parameter(hidden = true)
+        request: HttpServletRequest,
+
+        @Parameter(hidden = true)
+        response: HttpServletResponse,
+    ) {
+        // 현재 로그인 중인 회원 탈퇴 처리
+        userService.withdraw(requireNotNull(userDetails.user.id))
+
+        // 쿠키에 있는 Refresh Token 삭제
+        CookieUtil.deleteCookie(request, response, CookieUtil.REFRESH_TOKEN_COOKIE)
     }
 }
