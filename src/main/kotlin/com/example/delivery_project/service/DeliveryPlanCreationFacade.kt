@@ -25,6 +25,7 @@ import org.slf4j.LoggerFactory
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Isolation
+import org.springframework.transaction.annotation.Propagation
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDateTime
 
@@ -37,6 +38,7 @@ class DeliveryPlanCreationFacade(
     private val locationMapper: LocationMapper,
     private val claimProperties: DeliveryClaimProperties,
     private val priorityWindowAssigner: PriorityWindowAssigner,
+    private val openDeliveryPlanPublisher: OpenDeliveryPlanPublisher,
     private val eventPublisher: ApplicationEventPublisher,
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
@@ -46,19 +48,16 @@ class DeliveryPlanCreationFacade(
      * 생성된 계획은 OPEN 상태로 배송 기사들의 수령 대기열에 올라가며,
      * 추천 상위 기사에게는 짧은 우선 수령 구간이 먼저 열린다.
      */
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     fun createOpen(request: CreateDeliveryPlanRequest): Long {
         val plan = DeliveryPlanFactory.createOpen(
             resolveLocation(request.departureAddress),
             requireNotNull(request.scheduledDepartureAt),
             request.stops.map(::toStopSpec),
         )
-        // 우선권 대상을 정하려면 계획 ID 가 필요하므로 먼저 저장한다.
-        val savedPlan = deliveryPlanRepository.save(plan)
-        val planId = requireNotNull(savedPlan.id)
-        priorityWindowAssigner.open(savedPlan, LocalDateTime.now())
-        eventPublisher.publishEvent(DeliveryPlanCreatedEvent(planId))
-        log.info("[PLAN] 미배정 업무 등록 완료 planId: {}, publicAt: {}", planId, savedPlan.publicAt)
-        return planId
+        // n8n 외부 호출은 트랜잭션 밖에서 끝낸다. 성공/실패 결정 이후 계획과 우선권을 한 번에 저장한다.
+        val selection = priorityWindowAssigner.select(plan, LocalDateTime.now())
+        return openDeliveryPlanPublisher.publish(plan, selection)
     }
 
     /**

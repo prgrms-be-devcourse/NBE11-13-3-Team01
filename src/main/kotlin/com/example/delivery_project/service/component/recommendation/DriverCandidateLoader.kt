@@ -50,7 +50,7 @@ class DriverCandidateLoader(
     fun toContext(plan: DeliveryPlan, candidates: List<DriverCandidate>, evaluatedAt: LocalDateTime) =
         DriverRecommendationContext(
             target = RecommendationTarget(
-                planId = requireNotNull(plan.id),
+                planId = plan.id,
                 departureLocation = plan.departureLocation,
                 departureLatitude = plan.departureLatitude,
                 departureLongitude = plan.departureLongitude,

@@ -19,6 +19,8 @@ import com.example.delivery_project.exception.global.BusinessException
 import com.example.delivery_project.service.component.GeocodingClient
 import com.example.delivery_project.service.component.LocationMapper
 import com.example.delivery_project.service.component.recommendation.PriorityWindowAssigner
+import com.example.delivery_project.service.component.recommendation.PriorityWindowSelection
+import com.example.delivery_project.service.component.recommendation.AiRecommendationResult
 import com.example.delivery_project.spec.GeocodedLocation
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
@@ -38,6 +40,7 @@ class DeliveryPlanCreationFacadeTest {
     @Mock lateinit var deliveryPlanRepository: DeliveryPlanRepository
     @Mock lateinit var geocodingClient: GeocodingClient
     @Mock lateinit var priorityWindowAssigner: PriorityWindowAssigner
+    @Mock lateinit var openDeliveryPlanPublisher: OpenDeliveryPlanPublisher
     @Mock lateinit var eventPublisher: ApplicationEventPublisher
     private lateinit var facade: DeliveryPlanCreationFacade
 
@@ -50,6 +53,7 @@ class DeliveryPlanCreationFacadeTest {
             LocationMapper(),
             DeliveryClaimProperties(),
             priorityWindowAssigner,
+            openDeliveryPlanPublisher,
             eventPublisher,
         )
     }
@@ -124,20 +128,22 @@ class DeliveryPlanCreationFacadeTest {
     fun 미배정_업무로_등록하면_기사가_없는_OPEN_상태로_저장된다() {
         whenever(geocodingClient.geocode("서울 물류센터"))
             .thenReturn(GeocodedLocation("서울 물류센터", 37.50, 126.90))
-        whenever(deliveryPlanRepository.save(any<DeliveryPlan>())).thenAnswer {
-            it.getArgument<DeliveryPlan>(0).also { plan -> ReflectionTestUtils.setField(plan, "id", 200L) }
-        }
+        val selection = PriorityWindowSelection(emptyList(), AiRecommendationResult.DISABLED)
+        whenever(priorityWindowAssigner.select(any(), any())).thenReturn(selection)
+        whenever(openDeliveryPlanPublisher.publish(any(), eq(selection))).thenReturn(200L)
         val request = CreateDeliveryPlanRequest("서울 물류센터", LocalDateTime.now().plusHours(1), emptyList())
 
         val planId = facade.createOpen(request)
 
         val planCaptor = argumentCaptor<DeliveryPlan>()
-        verify(deliveryPlanRepository).save(planCaptor.capture())
+        verify(openDeliveryPlanPublisher).publish(planCaptor.capture(), eq(selection))
         val savedPlan = planCaptor.firstValue
         assertThat(planId).isEqualTo(200L)
         assertThat(savedPlan.driver).isNull()
         assertThat(savedPlan.status).isEqualTo(DeliveryPlanStatus.OPEN)
         assertThat(savedPlan.isClaimable).isTrue()
+        verify(priorityWindowAssigner).select(eq(savedPlan), any())
+        verify(deliveryPlanRepository, never()).save(any<DeliveryPlan>())
         verify(userRepository, never()).findUserByIdForUpdate(any())
     }
 

@@ -47,6 +47,16 @@ delivery:
     location-stale-minutes: ${DELIVERY_RECOMMENDATION_STALE_MINUTES:30}
     # 거리 정규화 상한(m). 이 값 이상이면 거리 점수는 0점이 된다.
     max-distance-meters: ${DELIVERY_RECOMMENDATION_MAX_DISTANCE:30000}
+    ai:
+      # AI 우선권 추천은 부가 기능이다. 비활성·장애·무효 응답이면 처음부터 전체 공개한다.
+      enabled: ${DELIVERY_AI_RECOMMENDATION_ENABLED:false}
+      webhook-url: ${DELIVERY_AI_RECOMMENDATION_WEBHOOK_URL:}
+      secret: ${DELIVERY_AI_RECOMMENDATION_SECRET:}
+      connect-timeout: ${DELIVERY_AI_RECOMMENDATION_CONNECT_TIMEOUT:500ms}
+      read-timeout: ${DELIVERY_AI_RECOMMENDATION_READ_TIMEOUT:2s}
+      candidate-pool-size: ${DELIVERY_AI_RECOMMENDATION_CANDIDATE_POOL_SIZE:20}
+      max-reasons-per-driver: 3
+      max-reason-length: 200
     weights:
       distance: 0.40
       active-plans: 0.20
@@ -76,5 +86,4 @@ management:
           - 200ms
           - 500ms
           - 1s
-
 
