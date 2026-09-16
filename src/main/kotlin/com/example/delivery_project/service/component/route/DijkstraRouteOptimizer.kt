@@ -3,26 +3,13 @@ package com.example.delivery_project.service.component.route
 import com.example.delivery_project.exception.DeliveryException
 import com.example.delivery_project.exception.global.BusinessException
 import org.springframework.stereotype.Component
+import org.slf4j.LoggerFactory
 import java.util.PriorityQueue
 
-/**
- * 상태 우선순위 큐로 최소 이동시간 Hamiltonian path 를 찾는 운영 기본 구현.
- *
- * ## 동점 경로에 대한 계약이 없다
- *
- * 최소 비용 경로가 여러 개일 때 어느 것을 돌려줄지 **정하지 않는다.**
- * `PriorityQueue` 는 같은 우선순위 원소의 순서를 보장하지 않고, 아래의
- * `nextTotalDuration >= knownDuration` 조건은 먼저 발견한 경로를 유지할 뿐이다.
- * 같은 입력에 대해 재현되기는 하지만 그건 후보 목록의 순회 순서가 고정돼 있어서
- * 생기는 결과이지 계약이 아니다.
- *
- * 그래서 이 구현은 differential test 에서 **총비용만** 비교 대상이고,
- * 경로 순서까지 비교하는 쪽은 사전순 최소를 계약으로 박아 둔
- * [BitmaskDpRouteOptimizer] 와 [NativeRouteOptimizer] 다.
- * 이 구현의 결과는 "최적 경로 중 하나인지"를 따로 검증한다.
- */
 @Component
 class DijkstraRouteOptimizer : RouteOptimizer {
+    private val log = LoggerFactory.getLogger(javaClass)
+
     override fun optimize(context: RouteOptimizationContext): OptimizedRoute {
         val routesToVisit = PriorityQueue(compareBy<SearchNode> { it.totalDurationSeconds })
         val minimumDurationByState = mutableMapOf<RouteState, Long>()
@@ -41,6 +28,11 @@ class DijkstraRouteOptimizer : RouteOptimizer {
 
             expandedStateCount++
             if (visitedEveryCandidate(current, context)) {
+                log.info(
+                    "[ROUTE] Kotlin 다익스트라 최적화 성공 source=kotlin-dijkstra candidateCount={}, totalDurationSeconds={}",
+                    context.candidateStopIds.size,
+                    current.totalDurationSeconds,
+                )
                 return OptimizedRoute(current.stopOrder, current.totalDurationSeconds, expandedStateCount)
             }
 

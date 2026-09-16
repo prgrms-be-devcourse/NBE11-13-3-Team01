@@ -10,7 +10,6 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDateTime
 
-/** DB 및 lazy collection 접근을 짧은 read-only 트랜잭션 안에서 DTO snapshot으로 끝낸다. */
 @Service
 class DriverRecommendationSnapshotLoader(
     private val deliveryPlanRepository: DeliveryPlanRepository,

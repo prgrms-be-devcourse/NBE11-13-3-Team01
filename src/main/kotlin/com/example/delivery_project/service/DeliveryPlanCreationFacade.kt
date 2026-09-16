@@ -43,11 +43,6 @@ class DeliveryPlanCreationFacade(
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
 
-    /**
-     * 관리자가 기사를 지정하지 않고 배송 업무를 등록한다.
-     * 생성된 계획은 OPEN 상태로 배송 기사들의 수령 대기열에 올라가며,
-     * 추천 상위 기사에게는 짧은 우선 수령 구간이 먼저 열린다.
-     */
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
     fun createOpen(request: CreateDeliveryPlanRequest): Long {
         val plan = DeliveryPlanFactory.createOpen(
@@ -55,31 +50,15 @@ class DeliveryPlanCreationFacade(
             requireNotNull(request.scheduledDepartureAt),
             request.stops.map(::toStopSpec),
         )
-        // n8n 외부 호출은 트랜잭션 밖에서 끝낸다. 성공/실패 결정 이후 계획과 우선권을 한 번에 저장한다.
         val selection = priorityWindowAssigner.select(plan, LocalDateTime.now())
         return openDeliveryPlanPublisher.publish(plan, selection)
     }
 
-    /**
-     * 관리자가 특정 기사에게 직접 할당하는 경로.
-     *
-     * 이 경로도 기사가 직접 수령하는 경로와 동일한 동시 보유 한도를 적용한다.
-     * 그렇지 않으면 기사는 3건 제한에 걸려 수령하지 못하는데 관리자 할당으로는 4건이 되는
-     * 모순이 생기고, 추천에서 제외한 기사에게 업무가 몰릴 수 있다.
-     *
-     * 한도 검사와 할당을 원자적으로 만들기 위해 [DeliveryPlanClaimService.claim] 과 같은 방식으로
-     * 기사 행을 잠그고 READ_COMMITTED 로 실행한다. 지오코딩 같은 외부 호출은 락을 잡기 전에 끝낸다.
-     */
     @Transactional(isolation = Isolation.READ_COMMITTED)
     fun create(driverId: Long, request: CreateDeliveryPlanRequest): Long {
-        // 1) 기사 유효성은 외부 호출 전에 확인해 잘못된 요청에 지오코딩 비용을 쓰지 않는다.
         ensureAssignableDriver(userRepository.findUserById(driverId), driverId)
-
-        // 2) 외부 API 호출(지오코딩)은 DB 락을 잡기 전에 모두 끝낸다. 락 구간에 네트워크 I/O 를 넣지 않는다.
         val departureLocation = resolveLocation(request.departureAddress)
         val stopSpecs = request.stops.map(::toStopSpec)
-
-        // 3) 기사 행을 잠근 뒤 한도 검사와 저장을 원자적으로 수행한다.
         val driver = lockDriver(driverId)
         ensureWithinClaimLimit(driverId)
 

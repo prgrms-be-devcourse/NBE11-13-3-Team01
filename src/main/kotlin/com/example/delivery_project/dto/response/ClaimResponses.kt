@@ -67,7 +67,6 @@ data class OpenDeliveryPlanResponse(
                 dangerStops = summary.dangerStops.toLong(),
                 publicAt = publicAt,
                 priorityRank = priorityRank,
-                // 우선권이 있으면 공개 전에도, 없으면 공개 시각 이후에만 수령할 수 있다.
                 claimableNow = priorityRank != null || publicAt == null || !now.isBefore(publicAt),
             )
         }

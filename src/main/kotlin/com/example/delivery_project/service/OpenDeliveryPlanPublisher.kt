@@ -19,7 +19,6 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDateTime
 
-/** 계획과 검증된 AI 우선권 목록을 한 번의 짧은 트랜잭션으로 공개한다. */
 @Service
 class OpenDeliveryPlanPublisher(
     private val deliveryPlanRepository: DeliveryPlanRepository,
@@ -34,8 +33,6 @@ class OpenDeliveryPlanPublisher(
 
     @Transactional
     fun publish(plan: DeliveryPlan, selection: PriorityWindowSelection): Long {
-        // n8n 호출 뒤 후보 상태가 달라졌을 수 있다. 여러 기사를 잠글 때는 ID 오름차순으로
-        // users 행을 먼저 잠가 기존 claim 경로의 users -> delivery_plan 순서를 지킨다.
         val validatedDrivers = lockAndValidateSelectedDrivers(selection)
         val savedPlan = deliveryPlanRepository.save(plan)
         val planId = requireNotNull(savedPlan.id)

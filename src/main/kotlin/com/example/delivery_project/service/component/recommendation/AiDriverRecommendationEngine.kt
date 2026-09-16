@@ -7,12 +7,6 @@ import org.springframework.stereotype.Component
 import java.util.UUID
 import kotlin.math.roundToLong
 
-/**
- * 결정적 스코어러로 후보 범위를 좁힌 뒤 n8n AI가 최종 순위와 설명을 선택한다.
- *
- * 실패 결과에는 항상 결정적 추천을 함께 담는다. 관리자 조회는 이를 fallback으로 보여줄 수 있지만,
- * 우선권 부여 경로는 [aiApplied]가 false이면 아무에게도 특혜를 주지 않고 전체 공개해야 한다.
- */
 @Component
 class AiDriverRecommendationEngine(
     private val deterministicRecommender: ScoreBasedDriverRecommender,
@@ -162,9 +156,7 @@ data class AiRecommendationOutcome(
 )
 
 enum class AiRecommendationMode {
-    /** AI가 우선권을 받을 후보와 순위를 고른다. */
     PRIORITY_SELECTION,
 
-    /** 관리자 조회에서는 결정적 순위·점수를 유지하고 AI 근거만 사용한다. */
     EXPLANATION_ONLY,
 }

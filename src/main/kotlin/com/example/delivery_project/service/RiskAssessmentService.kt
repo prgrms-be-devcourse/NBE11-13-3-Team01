@@ -71,8 +71,6 @@ class RiskAssessmentService(
             add(RiskFactorType.HEAT_WAVE)
         }
     }
-
-    // 현재 예보 시각부터 직전 2시간 이내의 가장 최신인 완전한 데이터 세트를 조회한다.
     private fun fetchWeatherValues(
         targets: List<AssessmentTarget>,
         now: LocalDateTime,

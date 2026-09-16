@@ -12,6 +12,17 @@ spring:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
 
+route-optimizer:
+  remote:
+    enabled: ${ROUTE_OPTIMIZER_REMOTE_ENABLED:true}
+    # 네트워크 비교를 위해 기본은 UDP. HTTP로 비교할 때만 transport=http로 덮어쓴다.
+    transport: ${ROUTE_OPTIMIZER_REMOTE_TRANSPORT:udp}
+    base-url: ${ROUTE_OPTIMIZER_REMOTE_URL:http://localhost:8091}
+    udp-host: ${ROUTE_OPTIMIZER_UDP_HOST:localhost}
+    udp-port: ${ROUTE_OPTIMIZER_UDP_PORT:8092}
+    connect-timeout: ${ROUTE_OPTIMIZER_REMOTE_CONNECT_TIMEOUT:200ms}
+    read-timeout: ${ROUTE_OPTIMIZER_REMOTE_READ_TIMEOUT:500ms}
+
 weather:
   api:
     key: ${WEATHER_API_KEY}
@@ -40,6 +51,9 @@ delivery:
     enabled: ${DELIVERY_PRIORITY_WINDOW_ENABLED:true}
     seconds: ${DELIVERY_PRIORITY_WINDOW_SECONDS:60}
     driver-count: ${DELIVERY_PRIORITY_WINDOW_DRIVERS:3}
+    # 데모에서는 AI 미사용/실패 시 결정적 스코어 상위 기사로 우선권을 부여한다.
+    deterministic-fallback: ${DELIVERY_PRIORITY_WINDOW_DETERMINISTIC_FALLBACK:true}
+
   recommendation:
     # 추천 결과로 돌려줄 기사 수
     limit: ${DELIVERY_RECOMMENDATION_LIMIT:3}
@@ -86,4 +100,3 @@ management:
           - 200ms
           - 500ms
           - 1s
-

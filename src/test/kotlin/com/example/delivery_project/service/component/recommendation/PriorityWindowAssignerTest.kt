@@ -102,6 +102,27 @@ class PriorityWindowAssignerTest {
         assertThat(plan.publicAt).isNull()
     }
 
+    @Test
+    fun `데모 fallback을 켜면 AI 실패 시 결정적 추천을 우선권에 전달한다`() {
+        priorityWindowProperties.deterministicFallback = true
+        val plan = openPlan()
+        whenever(driverCandidateLoader.load(any(), anyOrNull()))
+            .thenReturn(DriverCandidates(listOf(candidateOf(1L)), 0))
+        whenever(driverCandidateLoader.toContext(any(), any(), any())).thenReturn(contextOf(plan))
+        whenever(recommendationEngine.recommend(any(), eq(2), eq(AiRecommendationMode.PRIORITY_SELECTION))).thenReturn(
+            AiRecommendationOutcome(
+                listOf(scored(1L, 90)),
+                aiApplied = false,
+                result = AiRecommendationResult.DISABLED,
+            ),
+        )
+
+        val selection = assigner.select(plan, NOW)
+
+        assertThat(selection.drivers.map { it.candidate.driverId }).containsExactly(1L)
+        assertThat(selection.result).isEqualTo(AiRecommendationResult.DISABLED)
+    }
+
     private fun openPlan(): DeliveryPlan = DeliveryPlanFactory
         .createOpen(Location("서울 물류센터", 37.50, 126.90), NOW.plusHours(1))
         .also { ReflectionTestUtils.setField(it, "id", 10L) }

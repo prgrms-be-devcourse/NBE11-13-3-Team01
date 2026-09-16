@@ -2,12 +2,6 @@ package com.example.delivery_project.service.component.recommendation
 
 import java.time.LocalDateTime
 
-/**
- * n8n 과의 경계를 도메인 추천 로직에서 분리한다.
- *
- * 구현체는 예외를 밖으로 전파하지 않고 [AiGatewayResult.Failure]로 바꾼다. AI 추천은
- * 60초 우선권을 위한 부가 기능이므로 외부 장애가 업무 등록을 막아서는 안 된다.
- */
 interface AiRecommendationGateway {
     fun recommend(request: AiRecommendationRequest): AiGatewayResult
 }
@@ -27,7 +21,6 @@ data class AiRecommendationTarget(
     val dangerStops: Long,
 )
 
-/** 이름·loginId·정확한 좌표를 포함하지 않는 n8n 전송 모델. */
 data class AiRecommendationCandidate(
     val driverId: Long,
     val baseScore: Int,

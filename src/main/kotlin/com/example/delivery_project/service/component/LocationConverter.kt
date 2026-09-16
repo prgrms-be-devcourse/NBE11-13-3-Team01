@@ -27,8 +27,6 @@ object LocationConverter {
 
     private const val DEGRAD = PI / 180.0
     private const val RADDEG = 180.0 / PI
-
-    // LCC DFS 좌표변환: TO_GRID(위경도 -> 격자), TO_GPS(격자 -> 위경도)
     fun convertGridGps(mode: Int, latX: Double, lngY: Double): LatXLngY {
         val re = RE / GRID
         val slat1 = SLAT1 * DEGRAD
