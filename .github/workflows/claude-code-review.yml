@@ -41,7 +41,11 @@ jobs:
           # 원인 파악용. 어떤 도구가 거부됐는지 로그에 드러난다.
           # 확인이 끝나면 다시 제거한다.
           show_full_output: true
-          prompt: '/code-review:code-review --comment ${{ github.repository }}/pull/${{ github.event.pull_request.number }}'
+          # 리뷰 결과를 한국어로 받기 위해 프롬프트에 지시를 덧붙인다.
+          prompt: |-
+            /code-review:code-review --comment ${{ github.repository }}/pull/${{ github.event.pull_request.number }}
+
+            리뷰 댓글과 요약은 모두 한국어로 작성한다. 코드, 파일 경로, 식별자는 원문 그대로 둔다.
           # code-review 플러그인은 서브에이전트를 병렬로 띄워 리뷰하고,
           # PR 내용은 GitHub CLI 로 읽는다. 그래서 Task 와 gh 명령이 필요하다.
           # 댓글 도구만 허용하면 코드를 못 읽어 아무 지적 없이 끝난다.
