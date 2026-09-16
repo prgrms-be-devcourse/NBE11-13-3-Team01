@@ -1,6 +1,7 @@
 package com.example.delivery_project.service.component
 
 import com.example.delivery_project.domain.entity.weather.Weather
+import com.example.delivery_project.domain.repository.WeatherCacheRepository
 import com.example.delivery_project.domain.repository.WeatherRepository
 import com.example.delivery_project.dto.request.WeatherRequest
 import com.example.delivery_project.dto.response.WeatherResponse
@@ -16,6 +17,7 @@ import java.time.format.DateTimeFormatter
 class WeatherUpdater(
     private val weatherProvider: WeatherProvider,
     private val weatherRepository: WeatherRepository,
+    private val weatherCacheRepository: WeatherCacheRepository,
 ) {
 
     data class BaseDateTime(val baseDate: String, val baseTime: String)
@@ -51,7 +53,16 @@ class WeatherUpdater(
         for (item in requireNotNull(requireNotNull(response.body).items).item.orEmpty()) {
             upsert(item, fetchedAt)
         }
+        // 개별 item마다 지우지 않고, 이 요청(nx/ny)의 DB 갱신이 모두 끝난 뒤 한 번만 캐시를 무효화한다.
+        evictCache(request.nx, request.ny)
         return true
+    }
+
+    private fun evictCache(nx: Int, ny: Int) {
+        runCatching { weatherCacheRepository.delete(nx, ny) }
+            .onFailure {
+                log.warn("날씨 캐시 무효화 실패. TTL 만료로 자연 정리됩니다. nx={}, ny={}", nx, ny, it)
+            }
     }
 
     private fun upsert(item: WeatherResponse.Item, fetchedAt: LocalDateTime) {

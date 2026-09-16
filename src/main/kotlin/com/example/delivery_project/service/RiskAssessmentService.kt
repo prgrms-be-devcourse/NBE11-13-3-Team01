@@ -2,10 +2,8 @@ package com.example.delivery_project.service
 
 import com.example.delivery_project.domain.entity.delivery.DeliveryStop
 import com.example.delivery_project.domain.entity.delivery.RiskAssessment
-import com.example.delivery_project.domain.entity.weather.Weather
 import com.example.delivery_project.domain.repository.GridCoordinate
 import com.example.delivery_project.domain.repository.RiskAssessmentRepository
-import com.example.delivery_project.domain.repository.WeatherRepository
 import com.example.delivery_project.enums.RiskFactorType
 import com.example.delivery_project.exception.RiskException
 import com.example.delivery_project.exception.global.BusinessException
@@ -22,7 +20,7 @@ import java.time.temporal.ChronoUnit
 @Service
 @Transactional(readOnly = true)
 class RiskAssessmentService(
-    private val weatherRepository: WeatherRepository,
+    private val weatherCacheService: WeatherCacheService,
     private val riskFactorCalculator: RiskFactorCalculator,
     private val riskAssessmentRepository: RiskAssessmentRepository,
     private val demoRiskScenarioPolicy: DemoRiskScenarioPolicy,
@@ -73,6 +71,7 @@ class RiskAssessmentService(
     }
 
     // 현재 예보 시각부터 직전 2시간 이내의 가장 최신인 완전한 데이터 세트를 조회한다.
+    // 실제 조회(Redis 우선, 미스 시 DB 배치 조회)는 WeatherCacheService에 위임한다.
     private fun fetchWeatherValues(
         targets: List<AssessmentTarget>,
         now: LocalDateTime,
@@ -80,35 +79,7 @@ class RiskAssessmentService(
         val coordinates = targets.map { toGrid(it.stop) }.toSet()
         val currentForecastAt = now.truncatedTo(ChronoUnit.HOURS)
         val earliestForecastAt = currentForecastAt.minusHours(WEATHER_FALLBACK_HOURS)
-        val weathers = weatherRepository.findByNxInAndNyInAndFcstDateBetweenAndCategoryIn(
-            coordinates.map { it.nx }.toSet(),
-            coordinates.map { it.ny }.toSet(),
-            earliestForecastAt.toLocalDate(),
-            currentForecastAt.toLocalDate(),
-            RISK_CATEGORIES,
-        )
-        val weathersByCoordinate = weathers
-            .filter { GridCoordinate(it.nx, it.ny) in coordinates }
-            .groupBy { GridCoordinate(it.nx, it.ny) }
-        return coordinates.associateWith {
-            selectLatestWeatherValues(weathersByCoordinate[it].orEmpty(), earliestForecastAt, currentForecastAt)
-        }
-    }
-
-    private fun selectLatestWeatherValues(
-        weathers: List<Weather>,
-        earliestForecastAt: LocalDateTime,
-        currentForecastAt: LocalDateTime,
-    ): Map<String, String>? {
-        val valuesByForecastAt = weathers.groupBy { LocalDateTime.of(it.fcstDate, it.fcstTime) }
-            .mapValues { (_, forecasts) -> forecasts.associate { it.category to it.fcstValue } }
-        return valuesByForecastAt.entries
-            .filter { (at, values) ->
-                !at.isBefore(earliestForecastAt) && !at.isAfter(currentForecastAt) &&
-                    values.keys.containsAll(RISK_CATEGORIES)
-            }
-            .maxByOrNull { it.key }
-            ?.value
+        return weatherCacheService.getWeatherValues(coordinates, earliestForecastAt, currentForecastAt)
     }
 
     private fun toGrid(stop: DeliveryStop): GridCoordinate {
@@ -119,7 +90,6 @@ class RiskAssessmentService(
     private data class AssessmentTarget(val stop: DeliveryStop, val assessment: RiskAssessment)
 
     private companion object {
-        val RISK_CATEGORIES = listOf("T1H", "RN1", "PTY")
         const val WEATHER_FALLBACK_HOURS = 2L
     }
 }

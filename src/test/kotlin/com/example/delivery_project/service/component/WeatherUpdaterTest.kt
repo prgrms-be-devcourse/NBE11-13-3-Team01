@@ -1,6 +1,7 @@
 package com.example.delivery_project.service.component
 
 import com.example.delivery_project.domain.entity.weather.Weather
+import com.example.delivery_project.domain.repository.WeatherCacheRepository
 import com.example.delivery_project.domain.repository.WeatherRepository
 import com.example.delivery_project.dto.request.WeatherRequest
 import com.example.delivery_project.dto.response.WeatherResponse
@@ -18,7 +19,8 @@ import kotlin.test.assertTrue
 class WeatherUpdaterTest {
     private val provider = mock<WeatherProvider>()
     private val repository = mock<WeatherRepository>()
-    private val updater = WeatherUpdater(provider, repository)
+    private val weatherCacheRepository = mock<WeatherCacheRepository>()
+    private val updater = WeatherUpdater(provider, repository, weatherCacheRepository)
 
     @Test
     fun 정상_응답의_기존_날씨를_UPDATE한다() {

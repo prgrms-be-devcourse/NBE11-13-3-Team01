@@ -7,6 +7,7 @@ import com.example.delivery_project.config.RestControllerConfig
 import com.example.delivery_project.domain.repository.DeliveryPlanPriorityDriverRepository
 import com.example.delivery_project.domain.repository.DriverLocationRepository
 import com.example.delivery_project.domain.repository.UserRepository
+import com.example.delivery_project.domain.repository.WeatherCacheRepository
 import com.example.delivery_project.domain.repository.WeatherRepository
 import com.example.delivery_project.service.component.recommendation.DriverCandidateLoader
 import com.example.delivery_project.service.component.recommendation.DriverRecommender
@@ -72,6 +73,9 @@ class ComponentWiringTest {
     class ComponentConfiguration {
         @Bean
         fun weatherRepository(): WeatherRepository = mock(WeatherRepository::class.java)
+
+        @Bean
+        fun weatherCacheRepository(): WeatherCacheRepository = mock(WeatherCacheRepository::class.java)
 
         // service.component.recommendation 하위 패키지도 함께 스캔되므로
         // 추천·우선권 컴포넌트가 요구하는 설정과 리포지토리 빈을 함께 등록한다.

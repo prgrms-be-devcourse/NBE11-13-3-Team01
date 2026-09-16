@@ -15,6 +15,10 @@ spring:
 weather:
   api:
     key: ${WEATHER_API_KEY}
+  cache:
+    # 위험도 계산용 날씨 캐시(WeatherRiskCache) TTL. 최신화 목적이 아니라
+    # 캐시가 장기간 남지 않도록 하는 안전장치이다.
+    ttl: ${WEATHER_CACHE_TTL:2h}
 
 kakao:
   local:
