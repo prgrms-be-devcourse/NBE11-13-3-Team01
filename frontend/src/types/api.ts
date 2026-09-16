@@ -182,6 +182,7 @@ export interface RecommendedDriver {
   driverLoginId: string
   driverName: string
   score: number
+  baseScore: number | null
   distanceMeters: number | null
   estimatedTravelSeconds: number | null
   locationFresh: boolean
