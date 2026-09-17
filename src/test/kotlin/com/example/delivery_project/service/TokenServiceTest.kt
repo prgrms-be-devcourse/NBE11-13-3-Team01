@@ -48,7 +48,7 @@ class TokenServiceTest {
     }
 
     @Test
-    fun 토큰을_발급하면_RDB에_해시를_저장하고_Redis에도_캐싱한다() {
+    fun 토큰을_발급하면_RDB에_해시를_저장하고_기존_Redis_캐시는_무효화한다() {
         givenTokenProperties()
         whenever(tokenProvider.generateToken(user, ACCESS_VALIDITY)).thenReturn("access-token")
         whenever(tokenProvider.generateToken(user, REFRESH_VALIDITY)).thenReturn("refresh-token")
@@ -63,7 +63,8 @@ class TokenServiceTest {
         val captor = argumentCaptor<RefreshToken>()
         verify(refreshTokenRepository).save(captor.capture())
         assertThat(captor.firstValue.tokenHash).isEqualTo("hashed-refresh-token")
-        verify(refreshTokenRedisRepository).save(1L, "hashed-refresh-token", REFRESH_VALIDITY)
+        // 새 값을 Redis에 바로 쓰지 않는다. 다음 재발급의 Cache-Aside가 RDB 값을 다시 캐싱한다.
+        verify(refreshTokenRedisRepository).deleteByUserId(1L)
     }
 
     @Test
@@ -79,7 +80,7 @@ class TokenServiceTest {
 
         assertThat(existing.tokenHash).isEqualTo("new-hash")
         verify(refreshTokenRepository, never()).save(any())
-        verify(refreshTokenRedisRepository).save(1L, "new-hash", REFRESH_VALIDITY)
+        verify(refreshTokenRedisRepository).deleteByUserId(1L)
     }
 
     @Test
@@ -100,7 +101,8 @@ class TokenServiceTest {
 
         assertThat(pair.accessToken).isEqualTo("new-access-token")
         assertThat(pair.refreshToken).isEqualTo("new-refresh-token")
-        verify(refreshTokenRedisRepository).save(1L, "new-hash", REFRESH_VALIDITY)
+        // rotation 후 새 값을 바로 캐싱하지 않고, 기존(구) 캐시만 무효화한다.
+        verify(refreshTokenRedisRepository).deleteByUserId(1L)
     }
 
     @Test
@@ -122,8 +124,8 @@ class TokenServiceTest {
         assertThat(pair.accessToken).isEqualTo("new-access-token")
         // RDB fallback으로 조회한 tokenHash를 남은 TTL로 Redis에 재캐싱
         verify(refreshTokenRedisRepository).save(eq(1L), eq("old-hash"), any())
-        // 이후 rotation으로 새 토큰이 다시 캐싱됨
-        verify(refreshTokenRedisRepository).save(1L, "new-hash", REFRESH_VALIDITY)
+        // 이후 rotation으로 기존 캐시가 무효화됨(새 값은 다음 재발급 때 다시 캐싱)
+        verify(refreshTokenRedisRepository).deleteByUserId(1L)
     }
 
     @Test

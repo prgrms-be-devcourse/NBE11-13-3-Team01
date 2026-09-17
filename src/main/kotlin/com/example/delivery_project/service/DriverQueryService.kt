@@ -10,5 +10,6 @@ import org.springframework.transaction.annotation.Transactional
 @Transactional(readOnly = true)
 class DriverQueryService(private val userRepository: UserRepository) {
     fun getDrivers(): List<DriverSummaryResponse> =
-        userRepository.findAllByRoleOrderByNameAsc(Role.ROLE_DELIVERY_DRIVER).map(DriverSummaryResponse::from)
+        userRepository.findAllByRoleAndDeletedAtIsNullOrderByNameAsc(Role.ROLE_DELIVERY_DRIVER)
+            .map(DriverSummaryResponse::from)
 }

@@ -21,8 +21,9 @@ class DriverQueryServiceTest {
     @Test
     fun 배송기사_역할의_사용자만_요약해_반환한다() {
         val driver = User.of(7L, "driver", "password", "배송기사", Role.ROLE_DELIVERY_DRIVER)
-        whenever(userRepository.findAllByRoleOrderByNameAsc(Role.ROLE_DELIVERY_DRIVER)).thenReturn(listOf(driver))
+        whenever(userRepository.findAllByRoleAndDeletedAtIsNullOrderByNameAsc(Role.ROLE_DELIVERY_DRIVER))
+            .thenReturn(listOf(driver))
         assertThat(service.getDrivers()).containsExactly(DriverSummaryResponse(7L, "driver", "배송기사"))
-        verify(userRepository).findAllByRoleOrderByNameAsc(Role.ROLE_DELIVERY_DRIVER)
+        verify(userRepository).findAllByRoleAndDeletedAtIsNullOrderByNameAsc(Role.ROLE_DELIVERY_DRIVER)
     }
 }

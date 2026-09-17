@@ -30,7 +30,7 @@ class WeatherCacheService(
         val result = mutableMapOf<GridCoordinate, WeatherRiskCache?>()
         val missCoordinates = mutableSetOf<GridCoordinate>()
         for (coordinate in coordinates) {
-            val cached = findFromCache(coordinate)
+            val cached = findValidFromCache(coordinate, earliestForecastAt, currentForecastAt)
             if (cached != null) {
                 result[coordinate] = cached
             } else {
@@ -45,12 +45,38 @@ class WeatherCacheService(
         return result.mapValues { (_, cache) -> cache?.toValues() }
     }
 
+    // Redis TTL이 남아 있어도 조회 시점의 시간 창이 이동했을 수 있으므로,
+    // forecastAt이 현재 조회 범위 안에 있을 때만 HIT로 인정한다.
+    private fun findValidFromCache(
+        coordinate: GridCoordinate,
+        earliestForecastAt: LocalDateTime,
+        currentForecastAt: LocalDateTime,
+    ): WeatherRiskCache? {
+        val cached = findFromCache(coordinate) ?: return null
+        if (!cached.forecastAt.isBefore(earliestForecastAt) && !cached.forecastAt.isAfter(currentForecastAt)) {
+            return cached
+        }
+        log.info(
+            "날씨 캐시가 조회 범위를 벗어나 MISS로 처리합니다. nx={}, ny={}, forecastAt={}",
+            coordinate.nx, coordinate.ny, cached.forecastAt,
+        )
+        evictStaleCache(coordinate)
+        return null
+    }
+
     private fun findFromCache(coordinate: GridCoordinate): WeatherRiskCache? =
         runCatching { weatherCacheRepository.find(coordinate.nx, coordinate.ny) }
             .onFailure {
                 log.warn("날씨 캐시 조회 실패. DB 조회로 대체합니다. nx={}, ny={}", coordinate.nx, coordinate.ny, it)
             }
             .getOrNull()
+
+    private fun evictStaleCache(coordinate: GridCoordinate) {
+        runCatching { weatherCacheRepository.delete(coordinate.nx, coordinate.ny) }
+            .onFailure {
+                log.warn("stale 날씨 캐시 삭제 실패. TTL 만료로 자연 정리됩니다. nx={}, ny={}", coordinate.nx, coordinate.ny, it)
+            }
+    }
 
     // 격자 좌표당 DB 조회 1회를 넘지 않도록, 캐시 미스가 발생한 좌표만 모아 한 번에 조회한다.
     private fun fetchAndCacheFromDb(

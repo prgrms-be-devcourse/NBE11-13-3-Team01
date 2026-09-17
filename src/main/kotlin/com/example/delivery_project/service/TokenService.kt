@@ -37,17 +37,20 @@ class TokenService(
         val accessToken = tokenProvider.generateToken(user, jwtProperties.accessTokenValidity)
         val refreshToken = tokenProvider.generateToken(user, jwtProperties.refreshTokenValidity)
 
-        // DB와 Redis에 refresh token의 해시값을 저장
+        // Refresh Token hash를 계산해 RDB에 반영하고, 관련 Redis 캐시는 무효화한다.
         val tokenHash = refreshTokenHasher.hash(refreshToken)
         val expiresAt = LocalDateTime.now().plus(jwtProperties.refreshTokenValidity)
 
-        // DB와 Redis 모두 저장
         saveRefreshToken(user, tokenHash, expiresAt)
         log.debug("Token issued. userId: {}", user.id)
         return TokenPair(accessToken, refreshToken)
     }
 
-    // 해싱된 Refresh Token의 원본은 DB에 저장, 동일 값을 Redis에도 캐싱
+    // RDB를 Source of Truth로 갱신한다. Redis에는 새 값을 바로 쓰지 않고 기존 캐시만 무효화한다.
+    // 여기서 즉시 Redis에 새 tokenHash를 써버리면, 이 트랜잭션이 나중에 롤백될 때
+    // RDB는 이전 상태로 되돌아가는데 Redis만 아직 커밋되지 않은 새 값을 갖는 상태가 될 수 있다.
+    // 무효화만 해두면 커밋 이후 첫 재발급 요청의 Cache-Aside(findStoredRefreshToken)가
+    // RDB의 최종 값을 안전하게 다시 캐싱한다.
     private fun saveRefreshToken(user: User, tokenHash: String, expiresAt: LocalDateTime) {
         val userId = requireNotNull(user.id)
         val storedRefreshToken = refreshTokenRepository.findByUserId(userId)
@@ -58,7 +61,14 @@ class TokenService(
             storedRefreshToken.update(tokenHash, expiresAt)
         }
 
-        refreshTokenRedisRepository.save(userId, tokenHash, jwtProperties.refreshTokenValidity)
+        evictCachedRefreshToken(userId)
+    }
+
+    private fun evictCachedRefreshToken(userId: Long) {
+        runCatching { refreshTokenRedisRepository.deleteByUserId(userId) }
+            .onFailure {
+                log.warn("Refresh Token 캐시 무효화 실패. TTL 만료로 자연 정리됩니다. userId={}", userId, it)
+            }
     }
 
     // 재발급
@@ -81,8 +91,6 @@ class TokenService(
         // Redis Hit -> Redis 사용
         // Redis Miss -> DB 조회 후 Redis 캐싱
         val storedRefreshToken = findStoredRefreshToken(userId)
-        // val storedRefreshToken = refreshTokenRedisRepository.findByUserId(userId)
-            ?: throw BusinessException(AuthException.INVALID_REFRESH_TOKEN)
 
         // 4. 요청(쿠키) Refresh Token을 직접 해싱한 값과 서버 보유 Refresh Token(이미 해싱된 상태) 비교
         val tokenHash = refreshTokenHasher.hash(refreshToken)
@@ -95,7 +103,7 @@ class TokenService(
             ?: throw BusinessException(AuthException.INVALID_REFRESH_TOKEN)
 
         // 6. Rotation
-        // 새로 발급한 두 토큰 DB + Redis에 모두 저장
+        // 새로 발급한 Refresh Token hash를 RDB에 반영하고 기존 Redis 캐시는 무효화한다.
         val tokenPair = issueToken(user)
 
         log.debug("Token refreshed. userId: {}", user.id)
