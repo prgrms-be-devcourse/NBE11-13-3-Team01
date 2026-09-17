@@ -28,7 +28,7 @@ DROP TABLE IF EXISTS weather;
 CREATE TABLE users (
                        id        BIGINT AUTO_INCREMENT PRIMARY KEY,
                        login_id  VARCHAR(255) NOT NULL,
-                       password  VARCHAR(255) NOT NULL,
+                       password  VARCHAR(255) NULL,
                        name      VARCHAR(255) NOT NULL,
                        role      VARCHAR(30)  NOT NULL,
                        deleted_at DATETIME(6) NULL,
