@@ -20,9 +20,21 @@ else
   SHARED   := -shared
 endif
 
-.PHONY: all test sanitize clean print-lib
+.PHONY: all server run-server udp-server run-udp-server test sanitize clean print-lib
 
 all: $(BUILD)/$(LIB_NAME)
+
+server: $(BUILD)/route_optimizer_server
+	@echo "built $(BUILD)/route_optimizer_server (run 'make run-server' to start)"
+
+run-server: $(BUILD)/route_optimizer_server
+	$(BUILD)/route_optimizer_server
+
+udp-server: $(BUILD)/route_optimizer_udp_server
+	@echo "built $(BUILD)/route_optimizer_udp_server (run 'make run-udp-server' to start)"
+
+run-udp-server: $(BUILD)/route_optimizer_udp_server
+	$(BUILD)/route_optimizer_udp_server
 
 $(BUILD):
 	mkdir -p $(BUILD)
@@ -32,6 +44,12 @@ $(BUILD)/$(LIB_NAME): route_optimizer.c route_optimizer.h | $(BUILD)
 
 $(BUILD)/test_route_optimizer: route_optimizer.c route_optimizer.h test_route_optimizer.c | $(BUILD)
 	$(CC) $(CFLAGS) -o $@ route_optimizer.c test_route_optimizer.c
+
+$(BUILD)/route_optimizer_server: route_optimizer.c route_optimizer.h route_optimizer_server.c | $(BUILD)
+	$(CC) $(CFLAGS) -pthread -o $@ route_optimizer.c route_optimizer_server.c
+
+$(BUILD)/route_optimizer_udp_server: route_optimizer.c route_optimizer.h route_optimizer_udp_server.c | $(BUILD)
+	$(CC) $(CFLAGS) -o $@ route_optimizer.c route_optimizer_udp_server.c
 
 test: $(BUILD)/test_route_optimizer
 	$(BUILD)/test_route_optimizer

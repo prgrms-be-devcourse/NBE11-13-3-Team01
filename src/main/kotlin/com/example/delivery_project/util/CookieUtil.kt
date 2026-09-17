@@ -10,7 +10,6 @@ object CookieUtil {
     fun addCookie(response: HttpServletResponse, name: String, value: String, maxAge: Int) {
         val cookie = Cookie(name, value).apply {
             isHttpOnly = true
-            // 현재 프로젝트는 로컬 환경에서 실행한다.
             secure = false
             path = "/"
             this.maxAge = maxAge

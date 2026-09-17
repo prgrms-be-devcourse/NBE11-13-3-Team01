@@ -11,15 +11,6 @@ import org.springframework.data.domain.PageRequest
 import org.springframework.stereotype.Component
 import java.time.LocalDateTime
 
-/**
- * 보관 기간이 지난 완료 배송 계획을 한 페이지씩 읽는다.
- *
- * OFFSET 기반 페이징을 쓰지 않는다. 읽으면서 지우기 때문에 다음 페이지의 기준점이
- * 매번 앞으로 당겨져 행을 건너뛴다. 마지막으로 읽은 ID 를 커서로 삼으면
- * 삭제 여부와 무관하게 빠짐없이 읽힌다.
- *
- * 그 ID 를 ExecutionContext 에 저장하므로, 중간에 실패해도 다음 실행이 이어서 간다.
- */
 @Component
 @StepScope
 class ExpiredDeliveryPlanReader(

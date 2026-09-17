@@ -50,6 +50,8 @@ data class RecommendedDriverResponse(
     val driverName: String,
     @field:Schema(description = "적합도 점수 (0~100, 높을수록 적합)")
     val score: Int,
+    @field:Schema(description = "AI 추천 적용 시 결정적 스코어러가 계산한 기준 점수")
+    val baseScore: Int?,
     val distanceMeters: Long?,
     val estimatedTravelSeconds: Long?,
     @field:Schema(description = "위치 정보가 최신인지 여부. false 이면 거리 점수를 중립 처리한 결과다.")
@@ -71,6 +73,7 @@ data class RecommendedDriverResponse(
             driverLoginId = scored.candidate.loginId,
             driverName = scored.candidate.name,
             score = scored.score,
+            baseScore = scored.baseScore,
             distanceMeters = scored.distanceMeters?.roundToLong(),
             estimatedTravelSeconds = scored.estimatedTravelSeconds,
             locationFresh = scored.locationFresh,

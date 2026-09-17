@@ -2,6 +2,50 @@
 
 배송 경로 탐색(`RouteOptimizer`)을 C 로도 구현하고 FFM(`java.lang.foreign`)으로 호출한다.
 
+## C 최적화 서버
+
+`route_optimizer_server`는 같은 bitmask DP를 HTTP 서비스로 제공한다. Spring은
+`POST /optimize`에 `nodeCount`와 row-major `costs`를 보내고, C가 반환한 경로를
+우선 사용한다. 응답 오류·timeout·연결 실패가 발생하면 Kotlin의
+`DijkstraRouteOptimizer`로 fallback한다. 두 구현도 실패하면 기존 서비스 정책에 따라
+경로 추천 없이 다음 흐름을 계속한다.
+
+```bash
+make server
+ROUTE_OPTIMIZER_PORT=8091 ./build/route_optimizer_server
+# UDP 비교용
+make udp-server
+ROUTE_OPTIMIZER_UDP_PORT=8092 ./build/route_optimizer_udp_server
+```
+
+프로젝트 루트의 Docker Compose에서도 실행할 수 있다.
+
+```bash
+docker compose up -d route-optimizer
+./gradlew bootRun
+```
+
+Spring 원격 호출은 기본 활성화되며 기본 transport는 UDP(`localhost:8092`)다.
+HTTP 비교 시 `ROUTE_OPTIMIZER_REMOTE_TRANSPORT=http`를 지정하면
+`localhost:8091`로 요청을 보낸다. UDP에서 응답이 없거나 손상되면 Kotlin fallback을 사용한다.
+필요하면 `ROUTE_OPTIMIZER_REMOTE_ENABLED`, 주소·포트 환경변수로 설정을 재정의할 수 있다.
+그 외 설정은
+`ROUTE_OPTIMIZER_REMOTE_CONNECT_TIMEOUT`(기본 200ms),
+`ROUTE_OPTIMIZER_REMOTE_READ_TIMEOUT`(기본 500ms) 환경변수로 조정한다.
+
+간단한 요청 형식은 다음과 같다.
+
+```json
+{"nodeCount":3,"costs":[-1,1,2,-1,-1,3,-1,-1,-1]}
+```
+
+응답의 `status=0`이고 `route`가 모든 후보를 정확히 한 번씩 포함할 때만 사용한다.
+
+로그에는 계산 출처가 구분되어 남는다.
+
+- `source=c-route-optimizer`: C 서버 응답을 사용함
+- `source=kotlin-dijkstra`: C 호출 실패 후 Kotlin fallback 또는 원격 기능 비활성 상태
+
 **운영 최적화가 아니다.** 후보가 5개인 현재 규모에서 DP 자체는 수십 마이크로초이고,
 추천 API 전체 시간은 JPA 조회와 Kakao 길찾기 호출이 지배한다. 이 실험의 목적은
 언어 경계·ABI·네이티브 메모리 수명을 직접 다뤄 보고, **후보 수가 몇 개부터 뒤집히는지**를
@@ -86,7 +130,13 @@ make
 
 # crossover point 측정
 ./gradlew buildNativeRouteOptimizer benchmarkRouteOptimizer
+
+# TCP/HTTP와 UDP 네트워크 왕복 비교 (두 서버를 먼저 실행)
+node native/route_optimizer/benchmark_transport.mjs
 ```
+
+벤치마크는 동일한 6개 노드 입력을 순차 요청하고 평균, p50, p95, p99, 최대 지연과 실패 수를 출력한다.
+이는 알고리즘 실행 시간이 아니라 애플리케이션에서 측정한 네트워크 왕복 시간이다.
 
 라이브러리 위치는 `route.optimizer.native.library` 시스템 프로퍼티나
 `ROUTE_OPTIMIZER_NATIVE_LIBRARY` 환경변수로 덮어쓸 수 있다. 기본값은

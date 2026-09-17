@@ -39,11 +39,6 @@ class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response)
     }
 
-    /**
-     * 행 잠금 경합(락 타임아웃, 데드락 희생자)은 요청자 입장에서 "지금은 처리할 수 없다"는 뜻이므로
-     * 500 이 아니라 409 로 내려 재시도 가능한 상태임을 알린다.
-     * 배송 업무 수령처럼 같은 행에 요청이 몰리는 경로에서 발생할 수 있다.
-     */
     @ExceptionHandler(PessimisticLockingFailureException::class)
     fun handleLockConflict(exception: PessimisticLockingFailureException): ResponseEntity<ErrorResponse> {
         val errorCode = DeliveryException.DELIVERY_CLAIM_LOCK_CONFLICT

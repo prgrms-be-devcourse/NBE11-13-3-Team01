@@ -48,8 +48,10 @@
 - `delivery_plan.public_at`: 전체 공개 시각. NULL 이면 처음부터 전체 공개
 - `delivery_plan_priority_driver`: 공개 전까지 수령할 수 있는 추천 상위 기사와 순위·점수
 
-우선권 대상은 등록 트랜잭션 안에서 **추천 API 와 동일한 스코어러**로 정한다.
-`DriverCandidateLoader` 로 후보 조립을 공유하므로 "추천 1위인데 우선권이 없다" 같은 모순이 생기지 않는다.
+우선권 대상은 등록 트랜잭션 밖에서 n8n AI 추천을 완료한 뒤, 짧은 저장 트랜잭션에서 확정한다.
+`DriverCandidateLoader` 로 관리자 추천 API와 후보 조립을 공유하고, 저장 직전에 기사 행을 다시 잠가
+역할과 동시 보유 한도를 재검사한다. n8n 장애·시간 초과·계약 위반 또는 재검사 실패 시에는
+우선권을 만들지 않고 처음부터 전체 공개한다.
 
 #### 판정을 DB 로 내린 이유
 
@@ -229,9 +231,35 @@ Grafana(http://localhost:3000)의 **배송 업무 수령 경합** 대시보드�
 응답에는 피처별 기여도(`featureScores`)와 한국어 근거 문구(`reasons`)가 함께 담겨
 추천 결과를 설명할 수 있다. 동시 보유 한도를 넘긴 기사는 애초에 수령할 수 없으므로 후보에서 제외된다.
 
-추천기는 `DriverRecommender` 인터페이스로 분리되어 있다.
-LLM 기반 구현을 추가하더라도 **후보 랭킹은 결정적인 스코어러가 맡고 LLM 은 설명 생성만 담당**하도록 해,
-배정 자체가 비결정적 요소에 의존하지 않게 한다.
+### n8n AI 추천과 장애 정책
+
+결정적 스코어러가 먼저 적격 후보를 최대 `candidate-pool-size`명으로 줄이고 기준 점수와 피처를 만든다.
+관리자 추천 조회에서는 결정적 상위 N명의 순위·점수를 유지하고 n8n은 근거만 생성한다. 우선권 등록에서는
+n8n이 적격 후보 풀 안에서 실제 우선권 대상과 순위를 선택한다. 이름, 로그인 ID, 출발지 주소,
+정확한 위도·경도는 n8n payload에 보내지 않는다. AI가 직접 업무를 배정하지는 않으며,
+정상 응답일 때만 추천 기사에게 60초 우선 수령 기회를 준다.
+
+다음 경우에는 우선권 없이 즉시 전체 공개한다.
+
+- AI 기능 비활성 또는 추천 후보 없음
+- 연결·응답 제한 시간 초과, HTTP 오류, 전송 오류
+- requestId 불일치, 후보 밖 기사, 중복·누락 기사, 0~100 밖 점수, 비어 있거나 지나치게 긴 근거
+- n8n 응답을 기다리는 동안 기사의 역할 또는 동시 보유 한도가 바뀐 경우
+
+관리자 추천 조회에서는 AI가 실패해도 결정적 스코어링 결과를 참고용으로 반환한다. 이 fallback 결과는
+60초 우선권에는 사용하지 않는다. 응답의 `score`는 AI 적용 시 AI 적합도이고, `baseScore`는 결정적 기준 점수다.
+
+설정 예시는 다음과 같다. 기본값은 `enabled=false`여서 n8n을 구성하지 않은 환경의 동작을 바꾸지 않는다.
+
+```bash
+DELIVERY_AI_RECOMMENDATION_ENABLED=true
+DELIVERY_AI_RECOMMENDATION_WEBHOOK_URL=https://n8n.example.com/webhook/driver-recommendation
+DELIVERY_AI_RECOMMENDATION_SECRET=...
+DELIVERY_AI_RECOMMENDATION_CONNECT_TIMEOUT=500ms
+DELIVERY_AI_RECOMMENDATION_READ_TIMEOUT=2s
+```
+
+Webhook 요청·응답 계약과 n8n 구성 순서는 [`docs/n8n-driver-recommendation.md`](docs/n8n-driver-recommendation.md)를 참고한다.
 
 ## 배송 기사 위치 및 관리자 통계 API
 

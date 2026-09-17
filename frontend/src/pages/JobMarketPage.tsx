@@ -152,7 +152,7 @@ export function JobMarketPage() {
                 <footer className="market-card-foot">
                   {isLocked ? (
                     <p className="market-card-hint">
-                      추천 기사 우선 수령 중 · <strong>{formatCountdown(countdown)}</strong> 뒤 전체 공개
+                      추천 기사 우선 수령 중 · <strong>{formatCountdown(countdown)} 뒤 열립니다</strong>
                     </p>
                   ) : hasActivePriority ? (
                     <p className="market-card-hint priority-hint">
