@@ -8,12 +8,22 @@ spring:
     job:
       enabled: false # 기동 시 모든 Job 자동 실행 방지. 스케줄러가 직접 띄운다.
 
+# 배치 결과 알림. 웹훅 주소는 비밀값이므로 환경 변수로만 주입한다.
+# 값이 없으면 알림을 건너뛰므로 로컬에서는 설정하지 않아도 된다.
+slack:
+  webhook-url: ${SLACK_WEBHOOK_URL:}
+
 delivery:
   cleanup:
     cron: ${CLEANUP_CRON:0 0 4 * * *}
     retention-days: ${CLEANUP_RETENTION_DAYS:30}
     chunk-size: 100
     page-size: 100
+    # 락 경합처럼 일시적인 오류를 몇 번 다시 시도할지
+    retry-limit: ${CLEANUP_RETRY_LIMIT:3}
+    # 건너뛴 건수가 이 값을 넘으면 Step 을 실패시킨다.
+    # 전부 건너뛰고도 성공으로 끝나는 상황을 막는 안전장치다.
+    skip-limit: ${CLEANUP_SKIP_LIMIT:10}
 
 batch:
   metadata:
