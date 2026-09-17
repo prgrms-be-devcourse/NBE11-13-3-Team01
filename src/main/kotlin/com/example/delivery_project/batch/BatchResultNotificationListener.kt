@@ -27,6 +27,7 @@ class BatchResultNotificationListener(
     }
 
     //메시지 생성
+    //Job 완료 후 반환 객체 jobExcution의 내용을 바탕으로 배치 결과 메시지 생성
     private fun buildMessage(jobExecution: JobExecution): String {
         val rawName = jobExecution.jobInstance.jobName
         val jobName = DISPLAY_NAMES[rawName] ?: rawName
