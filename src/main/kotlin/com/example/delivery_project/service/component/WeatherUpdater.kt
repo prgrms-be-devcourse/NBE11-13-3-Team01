@@ -19,8 +19,6 @@ class WeatherUpdater(
 ) {
 
     data class BaseDateTime(val baseDate: String, val baseTime: String)
-
-    // 초단기예보 발표시각(매시 30분) 기준으로 조회 가능한 가장 최근 발표시각을 계산한다.
     fun resolveLatestBaseDateTime(): BaseDateTime {
         val availableReference = LocalDateTime.now(SEOUL).minusMinutes(15)
         var baseDateTime = availableReference.withMinute(30).withSecond(0).withNano(0)

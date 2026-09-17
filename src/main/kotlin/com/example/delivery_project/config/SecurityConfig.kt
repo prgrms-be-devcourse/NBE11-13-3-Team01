@@ -47,7 +47,6 @@ class SecurityConfig(
                 "/api/users/join",
                 "/api/users/login",
                 "/api/tokens/refresh",
-                // local 프로필에서만 컨트롤러가 생성되는 개발용 Access Token API
                 "/api/dev/tokens",
                 "/swagger-ui/**",
                 "/v3/api-docs/**",

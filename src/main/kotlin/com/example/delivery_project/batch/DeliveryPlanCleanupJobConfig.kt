@@ -45,9 +45,6 @@ class DeliveryPlanCleanupJobConfig(
         deletionSkipListener: DeletionSkipListener,
     ): Step =
         StepBuilder("deliveryPlanCleanupStep", jobRepository)
-            // Batch 6에서 chunk(size, txManager) 와 SimpleStepBuilder 는 지원 중단됐다.
-            // chunk(size) 가 돌려주는 ChunkOrientedStepBuilder 를 쓰고
-            // 트랜잭션 매니저는 별도 메서드로 넘긴다.
             .chunk<DeliveryPlan, DeliveryPlan>(chunkSize)
             .transactionManager(transactionManager)
             .reader(expiredDeliveryPlanReader)

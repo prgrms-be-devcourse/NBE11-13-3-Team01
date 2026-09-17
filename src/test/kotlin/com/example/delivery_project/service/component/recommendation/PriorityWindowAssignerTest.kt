@@ -4,18 +4,12 @@ import com.example.delivery_project.config.DeliveryClaimProperties
 import com.example.delivery_project.config.PriorityWindowProperties
 import com.example.delivery_project.domain.entity.delivery.DeliveryPlan
 import com.example.delivery_project.domain.entity.delivery.DeliveryPlanFactory
-import com.example.delivery_project.domain.entity.delivery.DeliveryPlanPriorityDriver
-import com.example.delivery_project.domain.entity.user.User
-import com.example.delivery_project.domain.repository.DeliveryPlanPriorityDriverRepository
-import com.example.delivery_project.domain.repository.UserRepository
-import com.example.delivery_project.enums.Role
 import com.example.delivery_project.spec.Location
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
 import org.mockito.kotlin.anyOrNull
-import org.mockito.kotlin.argumentCaptor
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.never
@@ -26,9 +20,7 @@ import java.time.LocalDateTime
 
 class PriorityWindowAssignerTest {
     private val driverCandidateLoader = mock<DriverCandidateLoader>()
-    private val driverRecommender = mock<DriverRecommender>()
-    private val priorityDriverRepository = mock<DeliveryPlanPriorityDriverRepository>()
-    private val userRepository = mock<UserRepository>()
+    private val recommendationEngine = mock<AiDriverRecommendationEngine>()
     private val priorityWindowProperties = PriorityWindowProperties()
     private val claimProperties = DeliveryClaimProperties()
     private lateinit var assigner: PriorityWindowAssigner
@@ -40,39 +32,31 @@ class PriorityWindowAssignerTest {
         priorityWindowProperties.driverCount = 2
         assigner = PriorityWindowAssigner(
             driverCandidateLoader,
-            driverRecommender,
-            priorityDriverRepository,
-            userRepository,
+            recommendationEngine,
             priorityWindowProperties,
             claimProperties,
         )
     }
 
     @Test
-    fun `추천 상위 기사에게 순위와 함께 우선권을 부여하고 공개 시각을 설정한다`() {
+    fun `AI 추천 성공 결과를 저장 단계에 전달한다`() {
         val plan = openPlan()
-        val drivers = listOf(driver(1L), driver(2L))
         whenever(driverCandidateLoader.load(any(), anyOrNull()))
-            .thenReturn(DriverCandidates(drivers.map { candidateOf(requireNotNull(it.id)) }, 0))
+            .thenReturn(DriverCandidates(listOf(candidateOf(1L), candidateOf(2L)), 0))
         whenever(driverCandidateLoader.toContext(any(), any(), any())).thenReturn(contextOf(plan))
-        whenever(driverRecommender.recommend(any(), eq(2)))
-            .thenReturn(listOf(scored(1L, 95), scored(2L, 80)))
-        whenever(userRepository.findAllById(any<Iterable<Long>>())).thenReturn(drivers)
-        whenever(priorityDriverRepository.saveAll(any<List<DeliveryPlanPriorityDriver>>()))
-            .thenAnswer { it.getArgument<List<DeliveryPlanPriorityDriver>>(0) }
+        whenever(recommendationEngine.recommend(any(), eq(2), eq(AiRecommendationMode.PRIORITY_SELECTION))).thenReturn(
+            AiRecommendationOutcome(
+                listOf(scored(1L, 95), scored(2L, 80)),
+                aiApplied = true,
+                result = AiRecommendationResult.SUCCESS,
+            ),
+        )
 
-        assigner.open(plan, NOW)
+        val selection = assigner.select(plan, NOW)
 
-        assertThat(plan.publicAt).isEqualTo(NOW.plusSeconds(60))
-        assertThat(plan.isPriorityWindowActive(NOW)).isTrue()
-        assertThat(plan.isPriorityWindowActive(NOW.plusSeconds(61))).isFalse()
-
-        val captor = argumentCaptor<List<DeliveryPlanPriorityDriver>>()
-        verify(priorityDriverRepository).saveAll(captor.capture())
-        val saved = captor.firstValue
-        assertThat(saved.map { it.driver.id }).containsExactly(1L, 2L)
-        assertThat(saved.map { it.priorityRank }).containsExactly(1, 2)
-        assertThat(saved.map { it.score }).containsExactly(95, 80)
+        assertThat(selection.result).isEqualTo(AiRecommendationResult.SUCCESS)
+        assertThat(selection.drivers.map { it.candidate.driverId }).containsExactly(1L, 2L)
+        assertThat(plan.publicAt).isNull()
     }
 
     @Test
@@ -80,10 +64,10 @@ class PriorityWindowAssignerTest {
         priorityWindowProperties.enabled = false
         val plan = openPlan()
 
-        assertThat(assigner.open(plan, NOW)).isEmpty()
+        assertThat(assigner.select(plan, NOW).drivers).isEmpty()
 
         assertThat(plan.publicAt).isNull()
-        verify(priorityDriverRepository, never()).saveAll(any<List<DeliveryPlanPriorityDriver>>())
+        verify(recommendationEngine, never()).recommend(any(), any(), any())
     }
 
     @Test
@@ -91,17 +75,57 @@ class PriorityWindowAssignerTest {
         val plan = openPlan()
         whenever(driverCandidateLoader.load(any(), anyOrNull())).thenReturn(DriverCandidates(emptyList(), 3))
 
-        assertThat(assigner.open(plan, NOW)).isEmpty()
+        assertThat(assigner.select(plan, NOW).drivers).isEmpty()
 
         assertThat(plan.publicAt).isNull()
-        verify(driverRecommender, never()).recommend(any(), any())
+        verify(recommendationEngine, never()).recommend(any(), any(), any())
+    }
+
+    @Test
+    fun `AI 추천 실패면 결정적 fallback을 우선권에 쓰지 않고 즉시 전체 공개한다`() {
+        val plan = openPlan()
+        whenever(driverCandidateLoader.load(any(), anyOrNull()))
+            .thenReturn(DriverCandidates(listOf(candidateOf(1L)), 0))
+        whenever(driverCandidateLoader.toContext(any(), any(), any())).thenReturn(contextOf(plan))
+        whenever(recommendationEngine.recommend(any(), eq(2), eq(AiRecommendationMode.PRIORITY_SELECTION))).thenReturn(
+            AiRecommendationOutcome(
+                listOf(scored(1L, 90)),
+                aiApplied = false,
+                result = AiRecommendationResult.TIMEOUT,
+            ),
+        )
+
+        val selection = assigner.select(plan, NOW)
+
+        assertThat(selection.drivers).isEmpty()
+        assertThat(selection.result).isEqualTo(AiRecommendationResult.TIMEOUT)
+        assertThat(plan.publicAt).isNull()
+    }
+
+    @Test
+    fun `데모 fallback을 켜면 AI 실패 시 결정적 추천을 우선권에 전달한다`() {
+        priorityWindowProperties.deterministicFallback = true
+        val plan = openPlan()
+        whenever(driverCandidateLoader.load(any(), anyOrNull()))
+            .thenReturn(DriverCandidates(listOf(candidateOf(1L)), 0))
+        whenever(driverCandidateLoader.toContext(any(), any(), any())).thenReturn(contextOf(plan))
+        whenever(recommendationEngine.recommend(any(), eq(2), eq(AiRecommendationMode.PRIORITY_SELECTION))).thenReturn(
+            AiRecommendationOutcome(
+                listOf(scored(1L, 90)),
+                aiApplied = false,
+                result = AiRecommendationResult.DISABLED,
+            ),
+        )
+
+        val selection = assigner.select(plan, NOW)
+
+        assertThat(selection.drivers.map { it.candidate.driverId }).containsExactly(1L)
+        assertThat(selection.result).isEqualTo(AiRecommendationResult.DISABLED)
     }
 
     private fun openPlan(): DeliveryPlan = DeliveryPlanFactory
         .createOpen(Location("서울 물류센터", 37.50, 126.90), NOW.plusHours(1))
         .also { ReflectionTestUtils.setField(it, "id", 10L) }
-
-    private fun driver(id: Long) = User.of(id, "driver$id", "password", "기사$id", Role.ROLE_DELIVERY_DRIVER)
 
     private fun candidateOf(driverId: Long) = DriverCandidate(
         driverId = driverId,
