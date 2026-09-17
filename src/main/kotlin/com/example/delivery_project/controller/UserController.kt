@@ -18,6 +18,7 @@ import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import jakarta.validation.Valid
 import org.springframework.security.core.annotation.AuthenticationPrincipal
+import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
@@ -89,5 +90,29 @@ class UserController(
     ): UserInfoResponse {
         val user = userDetails.user
         return UserInfoResponse(requireNotNull(user.id), user.loginId, user.name, user.role)
+    }
+
+    @Operation(summary = "회원 탈퇴", description = "현재 로그인한 사용자를 탈퇴 처리(soft delete)하고, 저장된 Refresh Token과 쿠키를 삭제합니다.")
+    @ApiResponses(value = [
+        ApiResponse(responseCode = "200", description = "회원 탈퇴 성공"),
+        ApiResponse(responseCode = "401", description = "인증 필요"),
+    ])
+    @DeleteMapping("/me")
+    fun withdraw(
+        @Parameter(hidden = true)
+        @AuthenticationPrincipal
+        userDetails: CustomUserDetails,
+
+        @Parameter(hidden = true)
+        request: HttpServletRequest,
+
+        @Parameter(hidden = true)
+        response: HttpServletResponse,
+    ) {
+        // 현재 로그인 중인 회원 탈퇴 처리
+        userService.withdraw(requireNotNull(userDetails.user.id))
+
+        // 쿠키에 있는 Refresh Token 삭제
+        CookieUtil.deleteCookie(request, response, CookieUtil.REFRESH_TOKEN_COOKIE)
     }
 }

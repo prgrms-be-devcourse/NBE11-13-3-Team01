@@ -4,8 +4,10 @@ import com.example.delivery_project.domain.entity.weather.Weather
 import com.example.delivery_project.domain.repository.WeatherRepository
 import com.example.delivery_project.dto.request.WeatherRequest
 import com.example.delivery_project.dto.response.WeatherResponse
+import com.example.delivery_project.event.WeatherUpdatedEvent
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.*
+import org.springframework.context.ApplicationEventPublisher
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
@@ -18,7 +20,8 @@ import kotlin.test.assertTrue
 class WeatherUpdaterTest {
     private val provider = mock<WeatherProvider>()
     private val repository = mock<WeatherRepository>()
-    private val updater = WeatherUpdater(provider, repository)
+    private val eventPublisher = mock<ApplicationEventPublisher>()
+    private val updater = WeatherUpdater(provider, repository, eventPublisher)
 
     @Test
     fun 정상_응답의_기존_날씨를_UPDATE한다() {
@@ -28,6 +31,8 @@ class WeatherUpdaterTest {
         assertTrue(updater.update(request()))
         verify(repository).updateFcstValue(any(), any(), any(), any(), any(), any(), any(), any(), any())
         verify(repository, never()).save(any<Weather>())
+        // 캐시 무효화는 직접 하지 않고, 트랜잭션 커밋 이후 처리를 위한 이벤트만 한 번 발행한다.
+        verify(eventPublisher).publishEvent(WeatherUpdatedEvent(60, 127))
     }
 
     @Test
@@ -45,6 +50,7 @@ class WeatherUpdaterTest {
             assertEquals("T1H", category)
             assertEquals("33", fcstValue)
         }
+        verify(eventPublisher).publishEvent(WeatherUpdatedEvent(60, 127))
     }
 
     @Test
@@ -54,6 +60,34 @@ class WeatherUpdaterTest {
         )
         assertFalse(updater.update(request()))
         verifyNoInteractions(repository)
+        // DB 갱신이 없었으므로 캐시 무효화 이벤트도 발행되면 안 된다.
+        verifyNoInteractions(eventPublisher)
+    }
+
+    @Test
+    fun 응답에_item이_여러_개여도_이벤트는_한_번만_발행한다() {
+        val multiItemResponse = WeatherResponse(
+            WeatherResponse.Header("00", "NORMAL_SERVICE"),
+            WeatherResponse.Body(
+                "JSON",
+                WeatherResponse.Items(
+                    listOf(
+                        WeatherResponse.Item("20260818", "1030", "T1H", "20260818", "1100", "33", 60, 127),
+                        WeatherResponse.Item("20260818", "1030", "RN1", "20260818", "1100", "0", 60, 127),
+                        WeatherResponse.Item("20260818", "1030", "PTY", "20260818", "1100", "0", 60, 127),
+                    ),
+                ),
+                1, 10, 3,
+            ),
+        )
+        whenever(provider.getWeather(request())).thenReturn(multiItemResponse)
+        whenever(repository.updateFcstValue(any(), any(), any(), any(), any(), any(), any(), any(), any()))
+            .thenReturn(1)
+
+        assertTrue(updater.update(request()))
+
+        verify(repository, times(3)).updateFcstValue(any(), any(), any(), any(), any(), any(), any(), any(), any())
+        verify(eventPublisher, times(1)).publishEvent(WeatherUpdatedEvent(60, 127))
     }
 
     @Test

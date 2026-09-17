@@ -8,8 +8,8 @@ import java.time.Duration
 class RefreshTokenRedisRepository(
     private val redisTemplate: StringRedisTemplate,
 ) {
-    fun save(userId: Long, token: String, ttl: Duration) {
-        redisTemplate.opsForValue().set(KEY_PREFIX + userId, token, ttl)
+    fun save(userId: Long, tokenHash: String, ttl: Duration) {
+        redisTemplate.opsForValue().set(KEY_PREFIX + userId, tokenHash, ttl)
     }
 
     fun findByUserId(userId: Long): String? =

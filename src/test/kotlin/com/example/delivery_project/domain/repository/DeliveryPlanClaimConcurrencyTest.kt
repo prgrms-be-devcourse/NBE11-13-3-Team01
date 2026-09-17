@@ -132,7 +132,7 @@ class DeliveryPlanClaimConcurrencyTest {
     @Test
     fun `같은 기사가 여러 업무를 동시에 수령해도 동시 보유 한도를 넘지 않는다`() {
         val driverId = saveDriver("limit-driver")
-        val driver = requireNotNull(userRepository.findUserById(driverId))
+        val driver = requireNotNull(userRepository.findUserByIdAndDeletedAtIsNull(driverId))
         // 이미 2건 보유 → 한도 3건까지 1건만 더 가져갈 수 있어야 한다.
         repeat(MAX_ACTIVE_PLANS - 1) { saveAssignedPlan(driver) }
         val openPlanIds = (1..4).map { saveOpenPlan() }
@@ -256,7 +256,7 @@ class DeliveryPlanClaimConcurrencyTest {
     @Test
     fun `미배정 목록 조회는 기사 정보가 없는 행을 null 로 매핑한다`() {
         val openPlanId = saveOpenPlan()
-        val driver = requireNotNull(userRepository.findUserById(saveDriver("assigned-driver")))
+        val driver = requireNotNull(userRepository.findUserByIdAndDeletedAtIsNull(saveDriver("assigned-driver")))
         val assignedPlanId = saveAssignedPlan(driver)
 
         val viewerId = saveDriver("viewer-driver")
@@ -296,7 +296,7 @@ class DeliveryPlanClaimConcurrencyTest {
         val plan = DeliveryPlanFactory.createOpen(DEPARTURE, LocalDateTime.now().plusHours(1))
         plan.openPriorityWindow(LocalDateTime.now().plusSeconds(windowSeconds))
         val planId = persistPlan(plan)
-        val driver = requireNotNull(userRepository.findUserById(driverId))
+        val driver = requireNotNull(userRepository.findUserByIdAndDeletedAtIsNull(driverId))
         priorityDriverRepository.save(
             DeliveryPlanPriorityDriver.of(reload(planId), driver, 1, 90),
         )

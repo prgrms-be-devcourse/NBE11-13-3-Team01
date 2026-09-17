@@ -56,7 +56,10 @@ class DeliveryPlanCreationFacade(
 
     @Transactional(isolation = Isolation.READ_COMMITTED)
     fun create(driverId: Long, request: CreateDeliveryPlanRequest): Long {
-        ensureAssignableDriver(userRepository.findUserById(driverId), driverId)
+        // 1) 기사 유효성은 외부 호출 전에 확인해 잘못된 요청에 지오코딩 비용을 쓰지 않는다.
+        ensureAssignableDriver(userRepository.findUserByIdAndDeletedAtIsNull(driverId), driverId)
+
+        // 2) 외부 API 호출(지오코딩)은 DB 락을 잡기 전에 모두 끝낸다. 락 구간에 네트워크 I/O 를 넣지 않는다.
         val departureLocation = resolveLocation(request.departureAddress)
         val stopSpecs = request.stops.map(::toStopSpec)
         val driver = lockDriver(driverId)
