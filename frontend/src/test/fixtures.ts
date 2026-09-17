@@ -1,5 +1,10 @@
 import { ApiError } from '../api/client'
-import type { ClaimDeliveryPlanResponse, ErrorResponse, OpenDeliveryPlan } from '../types/api'
+import type {
+  ClaimDeliveryPlanResponse,
+  DeliveryPlanSummary,
+  ErrorResponse,
+  OpenDeliveryPlan,
+} from '../types/api'
 
 export function openPlan(overrides: Partial<OpenDeliveryPlan> = {}): OpenDeliveryPlan {
   return {
@@ -15,6 +20,25 @@ export function openPlan(overrides: Partial<OpenDeliveryPlan> = {}): OpenDeliver
     publicAt: null,
     priorityRank: null,
     claimableNow: true,
+    ...overrides,
+  }
+}
+
+/** 기사 본인의 배송 계획 목록 한 줄. */
+export function planSummary(overrides: Partial<DeliveryPlanSummary> = {}): DeliveryPlanSummary {
+  return {
+    planId: 21,
+    departureLocation: '서울 물류센터',
+    scheduledDepartureAt: '2026-09-17T09:00:00',
+    assignedAt: '2026-09-17T08:30:00',
+    actualDepartureAt: null,
+    completedAt: null,
+    status: 'READY',
+    totalStops: 3,
+    remainingStops: 3,
+    totalBoxes: 12,
+    remainingBoxes: 12,
+    dangerStops: 0,
     ...overrides,
   }
 }

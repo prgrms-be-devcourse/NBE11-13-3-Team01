@@ -1,10 +1,18 @@
-import { NavLink, Outlet, useNavigate } from 'react-router'
+import { useEffect } from 'react'
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router'
 import { useAuth } from '../auth/AuthContext'
 import { DriverLocationTracker } from './DriverLocationTracker'
 
 export function AppLayout() {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
+
+  useEffect(() => {
+    // 라우트가 바뀌어도 스크롤 위치는 남는다. 목록 아래쪽에서 상세로 들어가면
+    // 새 화면의 중간부터 보이므로 맨 위로 되돌린다.
+    window.scrollTo?.({ top: 0, behavior: 'auto' })
+  }, [location.pathname])
 
   const handleLogout = async () => {
     await logout()
@@ -35,10 +43,10 @@ export function AppLayout() {
 
         <div className="user-menu">
           {user?.role === 'ROLE_DELIVERY_DRIVER' && <DriverLocationTracker />}
-          <div className="user-copy">
+          <NavLink to="/account" className="user-copy" aria-label="계정 설정">
             <strong>{user?.name}</strong>
             <span>{user?.loginId}</span>
-          </div>
+          </NavLink>
           <button type="button" className="button button-ghost button-small" onClick={handleLogout}>
             로그아웃
           </button>
@@ -46,7 +54,13 @@ export function AppLayout() {
       </header>
 
       <main className="page-container">
-        <Outlet />
+        {/*
+          key 로 강제 리마운트해서 진입 애니메이션이 매 전환마다 다시 재생되게 한다.
+          같은 경로 안에서 파라미터만 바뀌는 경우(/plans/1 -> /plans/2)에도 새 화면으로 보이는 게 맞다.
+        */}
+        <div key={location.pathname} className="page-transition">
+          <Outlet />
+        </div>
       </main>
     </div>
   )

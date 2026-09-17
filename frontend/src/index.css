@@ -3112,3 +3112,275 @@ select:focus-visible {
   font-weight: 700;
   color: var(--green);
 }
+
+/* ── 계정 설정 · 회원 탈퇴 ─────────────────────────────────────────────── */
+
+/* 상단바의 사용자 정보가 계정 설정으로 가는 링크가 됐다. 누를 수 있다는 걸 보여준다. */
+.user-copy {
+  border-radius: 10px;
+  padding: 4px 6px;
+  transition: background 160ms ease;
+}
+
+.user-copy:hover,
+.user-copy:focus-visible {
+  background: var(--surface-soft);
+}
+
+.user-copy.active strong {
+  color: var(--green);
+}
+
+.button-danger {
+  color: white;
+  background: var(--red);
+  box-shadow: 0 8px 18px rgba(185, 71, 56, 0.2);
+}
+
+.button-danger:hover:not(:disabled) {
+  background: #9e3a2d;
+}
+
+.alert-notice {
+  color: var(--green-dark);
+  border: 1px solid #b9ccbe;
+  background: var(--green-soft);
+}
+
+.account-facts {
+  display: grid;
+  gap: 14px;
+  margin: 24px 0 0;
+}
+
+.account-facts > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.account-facts > div:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.account-facts dt {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.account-facts dd {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 800;
+  text-align: right;
+  word-break: break-all;
+}
+
+.danger-zone {
+  border-color: #efc3bc;
+  background: linear-gradient(180deg, var(--red-soft) 0%, white 120px);
+}
+
+.section-number-danger {
+  color: #862e24;
+  background: #f8d5cf;
+}
+
+.danger-notes {
+  margin: 22px 0 24px;
+  padding-left: 20px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+/* ── 확인 모달 ─────────────────────────────────────────────────────────── */
+
+.dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(24, 38, 31, 0.45);
+  animation: dialog-fade-in 140ms ease;
+}
+
+.dialog-card {
+  width: min(440px, 100%);
+  padding: 28px;
+  border-radius: 20px;
+  background: white;
+  box-shadow: var(--shadow);
+  animation: dialog-rise 160ms ease;
+}
+
+.dialog-card h2 {
+  margin: 0 0 12px;
+  font-size: 19px;
+}
+
+.dialog-body p {
+  margin: 0 0 8px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.dialog-body p:last-child {
+  margin-bottom: 0;
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 24px;
+}
+
+@keyframes dialog-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes dialog-rise {
+  from {
+    transform: translateY(8px);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dialog-backdrop,
+  .dialog-card {
+    animation: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .dialog-card {
+    padding: 22px;
+  }
+
+  .dialog-actions {
+    flex-direction: column-reverse;
+  }
+
+  .dialog-actions .button {
+    width: 100%;
+  }
+
+  .account-facts > div {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .account-facts dd {
+    text-align: left;
+  }
+}
+
+/* ── 화면 전환 ─────────────────────────────────────────────────────────── */
+
+/*
+ * 들어올 때만 애니메이션한다. 나가는 화면까지 애니메이션하려면 이전 트리를 살려둬야 하는데,
+ * 그러면 전환 중 두 화면이 같이 떠 있어 폴링·지도 같은 부작용이 겹친다.
+ */
+.page-transition {
+  animation: page-enter 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes page-enter {
+  from {
+    transform: translateY(10px);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-transition {
+    animation: none;
+  }
+}
+
+/* ── 탈퇴 차단 안내 ───────────────────────────────────────────────────── */
+
+.withdraw-blocked {
+  margin: 22px 0 24px;
+  padding: 18px 20px;
+  border: 1px solid #efc3bc;
+  border-radius: 14px;
+  background: white;
+}
+
+.withdraw-blocked strong {
+  display: block;
+  color: #862e24;
+  font-size: 14px;
+}
+
+.withdraw-blocked > p {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.withdraw-blocked-list {
+  display: grid;
+  gap: 10px;
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.withdraw-blocked-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  font-size: 13px;
+}
+
+.withdraw-blocked-list a {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  gap: 8px;
+  font-weight: 800;
+}
+
+.withdraw-blocked-list a:hover span:first-child {
+  color: var(--green);
+}
+
+.withdraw-blocked-list a span:last-child {
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.withdraw-blocked-meta {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+@media (max-width: 640px) {
+  .withdraw-blocked-list li {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+}

@@ -14,4 +14,9 @@ enum class AuthException(
     ACCESS_DENIED(HttpStatus.FORBIDDEN, "ACCESS_DENIED", "접근 권한이 없습니다"),
     DUPLICATE_LOGIN_ID(HttpStatus.CONFLICT, "DUPLICATE_LOGIN_ID", "이미 사용 중인 아이디입니다"),
     INVALID_LOGIN(HttpStatus.UNAUTHORIZED, "INVALID_LOGIN", "아이디 또는 비밀번호가 올바르지 않습니다"),
+    WITHDRAW_BLOCKED_BY_ACTIVE_DELIVERY(
+        HttpStatus.CONFLICT,
+        "WITHDRAW_BLOCKED_BY_ACTIVE_DELIVERY",
+        "진행 중인 배송 업무가 있어 탈퇴할 수 없습니다. 먼저 반납하거나 완료해 주세요",
+    ),
 }

@@ -22,6 +22,7 @@ interface AuthContextValue {
   isBootstrapping: boolean
   login: (loginId: string, password: string) => Promise<void>
   logout: () => Promise<void>
+  withdraw: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -76,6 +77,17 @@ export function AuthProvider({ children }: PropsWithChildren) {
     }
   }, [resetAuth])
 
+  /**
+   * 회원 탈퇴.
+   *
+   * 로그아웃과 달리 실패하면 세션을 **유지한다.** 서버가 거절했는데 화면만 로그아웃시키면
+   * 사용자는 탈퇴된 줄 알고 떠나지만 계정은 그대로 남는다. 성공했을 때만 상태를 비운다.
+   */
+  const withdraw = useCallback(async () => {
+    await authApi.withdraw()
+    resetAuth()
+  }, [resetAuth])
+
   const value = useMemo<AuthContextValue>(
     () => ({
       user,
@@ -83,8 +95,9 @@ export function AuthProvider({ children }: PropsWithChildren) {
       isBootstrapping,
       login,
       logout,
+      withdraw,
     }),
-    [isBootstrapping, login, logout, user],
+    [isBootstrapping, login, logout, user, withdraw],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

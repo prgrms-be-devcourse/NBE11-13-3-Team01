@@ -1,9 +1,11 @@
 package com.example.delivery_project.service
 
 import com.example.delivery_project.domain.entity.user.User
+import com.example.delivery_project.domain.repository.DeliveryPlanRepository
 import com.example.delivery_project.domain.repository.UserRepository
 import com.example.delivery_project.dto.request.UserJoinRequest
 import com.example.delivery_project.dto.request.UserLoginRequest
+import com.example.delivery_project.enums.DeliveryPlanStatus
 import com.example.delivery_project.enums.Role
 import com.example.delivery_project.exception.AuthException
 import com.example.delivery_project.exception.global.BusinessException
@@ -28,6 +30,7 @@ class UserServiceTest {
     @Mock lateinit var passwordEncoder: PasswordEncoder
     @Mock lateinit var authenticationManager: AuthenticationManager
     @Mock lateinit var tokenService: TokenService
+    @Mock lateinit var deliveryPlanRepository: DeliveryPlanRepository
     @InjectMocks lateinit var userService: UserService
 
     @Test
@@ -81,7 +84,9 @@ class UserServiceTest {
     @Test
     fun 회원_탈퇴하면_soft_delete되고_RefreshToken을_로그아웃한다() {
         val user = User.of(1L, "driver", "encoded", "배송기사", Role.ROLE_DELIVERY_DRIVER)
-        whenever(userRepository.findUserByIdAndDeletedAtIsNull(1L)).thenReturn(user)
+        whenever(userRepository.findUserByIdForUpdate(1L)).thenReturn(user)
+        whenever(deliveryPlanRepository.countByDriverIdAndStatusIn(1L, DeliveryPlanStatus.ACTIVE_STATUSES))
+            .thenReturn(0L)
 
         userService.withdraw(1L)
 
@@ -90,11 +95,42 @@ class UserServiceTest {
     }
 
     @Test
+    fun 진행_중인_배송_업무가_있으면_탈퇴할_수_없다() {
+        val user = User.of(1L, "driver", "encoded", "배송기사", Role.ROLE_DELIVERY_DRIVER)
+        whenever(userRepository.findUserByIdForUpdate(1L)).thenReturn(user)
+        whenever(deliveryPlanRepository.countByDriverIdAndStatusIn(1L, DeliveryPlanStatus.ACTIVE_STATUSES))
+            .thenReturn(2L)
+
+        assertAuthException(AuthException.WITHDRAW_BLOCKED_BY_ACTIVE_DELIVERY) { userService.withdraw(1L) }
+
+        // 거절했으면 세션도 그대로 둬야 한다. 로그아웃만 되고 계정이 남으면 사용자가 상태를 오해한다.
+        assertThat(user.isWithdrawn()).isFalse()
+        verify(tokenService, never()).logout(any())
+    }
+
+    @Test
+    fun 보유_업무_수를_세기_전에_기사_행을_먼저_잠근다() {
+        // 잠금보다 카운트가 먼저 나가면 그 사이에 수령이 끼어들어 검사가 무의미해진다.
+        val user = User.of(1L, "driver", "encoded", "배송기사", Role.ROLE_DELIVERY_DRIVER)
+        whenever(userRepository.findUserByIdForUpdate(1L)).thenReturn(user)
+        whenever(deliveryPlanRepository.countByDriverIdAndStatusIn(1L, DeliveryPlanStatus.ACTIVE_STATUSES))
+            .thenReturn(0L)
+
+        userService.withdraw(1L)
+
+        inOrder(userRepository, deliveryPlanRepository) {
+            verify(userRepository).findUserByIdForUpdate(1L)
+            verify(deliveryPlanRepository).countByDriverIdAndStatusIn(1L, DeliveryPlanStatus.ACTIVE_STATUSES)
+        }
+    }
+
+    @Test
     fun 이미_탈퇴했거나_존재하지_않는_회원은_탈퇴할_수_없다() {
-        whenever(userRepository.findUserByIdAndDeletedAtIsNull(1L)).thenReturn(null)
+        whenever(userRepository.findUserByIdForUpdate(1L)).thenReturn(null)
 
         assertAuthException(AuthException.AUTHENTICATION_REQUIRED) { userService.withdraw(1L) }
         verify(tokenService, never()).logout(any())
+        verify(deliveryPlanRepository, never()).countByDriverIdAndStatusIn(any(), any())
     }
 
     private fun assertAuthException(expected: AuthException, action: () -> Unit) {

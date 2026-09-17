@@ -13,6 +13,11 @@ export function logout() {
   return apiRequest<void>('/api/users/logout', { method: 'POST' })
 }
 
+/** 현재 로그인한 회원을 탈퇴 처리한다. 서버는 soft delete 후 refresh 쿠키를 지운다. */
+export function withdraw() {
+  return apiRequest<void>('/api/users/me', { method: 'DELETE' })
+}
+
 export function getMyInfo() {
   return apiRequest<UserInfo>('/api/users/info')
 }

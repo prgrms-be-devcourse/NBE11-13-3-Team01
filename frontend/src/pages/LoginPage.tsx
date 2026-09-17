@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router'
 import { useAuth } from '../auth/AuthContext'
+import { consumeAuthNotice } from '../auth/notice'
 import { errorMessage } from '../utils/format'
 
 interface LoginLocationState {
@@ -14,6 +15,8 @@ export function LoginPage() {
   const [loginId, setLoginId] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
+  // 마운트할 때 한 번만 읽고 지운다. 새로고침하면 다시 보이면 안 된다.
+  const [notice] = useState(consumeAuthNotice)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   if (isAuthenticated) return <Navigate to="/plans" replace />
@@ -88,6 +91,7 @@ export function LoginPage() {
             />
           </label>
 
+          {notice && <div className="alert alert-notice">{notice}</div>}
           {error && <div className="alert alert-error">{error}</div>}
 
           <button className="button button-primary button-large" type="submit" disabled={isSubmitting}>
