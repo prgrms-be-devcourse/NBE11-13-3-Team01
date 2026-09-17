@@ -1,4 +1,11 @@
 services:
+  route-optimizer:
+    build:
+      context: ./native/route_optimizer
+    container_name: route-optimizer
+    ports:
+      - "8091:8091"
+
   redis:
     image: redis:latest
     container_name: redis

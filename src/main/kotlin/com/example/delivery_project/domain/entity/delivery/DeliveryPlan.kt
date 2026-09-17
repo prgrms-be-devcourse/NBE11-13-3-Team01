@@ -42,19 +42,11 @@ class DeliveryPlan private constructor(
     var id: Long? = null
         protected set
 
-    /**
-     * 관리자가 등록한 직후에는 수령한 기사가 없으므로 null 이다.
-     * 기사가 [claim] 으로 수령하는 순간에만 채워진다.
-     */
     @field:ManyToOne(fetch = FetchType.LAZY)
     @field:JoinColumn(name = "driver_id")
     var driver: User? = null
         protected set
 
-    /**
-     * 선착순 수령 경합에서 lost update 를 막는 2차 방어선.
-     * 1차 방어선은 DeliveryPlanRepository 의 원자적 조건부 UPDATE 이다.
-     */
     @field:Version
     var version: Long = 0
         protected set
@@ -69,6 +61,24 @@ class DeliveryPlan private constructor(
 
     val deliveryStops: List<DeliveryStop>
         get() = deliveryStopEntities.toList()
+
+    /**
+     * 우선 수령 권한은 배송 계획에 종속된 기록이다. 계획이 사라지면 함께 사라져야 한다.
+     *
+     * 이 매핑이 없으면 JPA 가 이 테이블의 존재를 모르고 계획부터 지우려 들어
+     * 외래키 제약에 걸린다. 그 예외는 커밋 시점에 터지므로 배치의 skip 으로도 넘길 수 없고,
+     * 정리 배치가 통째로 실패한다.
+     */
+    @field:OneToMany(
+        mappedBy = "deliveryPlan",
+        cascade = [CascadeType.ALL],
+        orphanRemoval = true,
+    )
+    @field:OrderBy("priorityRank ASC")
+    private var priorityDriverEntities: MutableList<DeliveryPlanPriorityDriver> = mutableListOf()
+
+    val priorityDrivers: List<DeliveryPlanPriorityDriver>
+        get() = priorityDriverEntities.toList()
 
     @field:Column(nullable = false)
     var departureLocation: String = departureLocation
@@ -87,12 +97,6 @@ class DeliveryPlan private constructor(
     var assignedAt: LocalDateTime? = null
         protected set
 
-    /**
-     * 전체 기사에게 공개되는 시각.
-     *
-     * 이 시각 전에는 [DeliveryPlanPriorityDriver] 에 등록된 추천 상위 기사만 수령할 수 있다.
-     * null 이면 우선권 없이 처음부터 전체 공개된 업무다. (관리자 직접 할당, 반납된 업무, 윈도우 비활성)
-     */
     var publicAt: LocalDateTime? = null
         protected set
 
@@ -135,13 +139,8 @@ class DeliveryPlan private constructor(
     val isClaimable: Boolean
         get() = status.isOpen() && driver == null
 
-    /** 아직 추천 상위 기사만 수령할 수 있는 구간인지 여부 */
     fun isPriorityWindowActive(now: LocalDateTime): Boolean = publicAt?.isAfter(now) == true
 
-    /**
-     * 추천 상위 기사에게 우선 수령 권한을 주는 구간을 연다.
-     * 우선권 대상 목록은 [DeliveryPlanPriorityDriver] 로 따로 저장한다.
-     */
     fun openPriorityWindow(publicAt: LocalDateTime) {
         if (!isClaimable) {
             throw BusinessException(DeliveryException.DELIVERY_PLAN_ALREADY_CLAIMED)
@@ -169,10 +168,6 @@ class DeliveryPlan private constructor(
     fun addStop(location: Location, analyzedAt: LocalDateTime): DeliveryStop =
         addStop(location.address, location.latitude, location.longitude, analyzedAt)
 
-    /**
-     * 배송 기사가 미배정 업무를 수령한다.
-     * 낙관적 락(@Version)과 함께 동작하며, 도메인 차원의 불변식(미배정 + OPEN)을 강제한다.
-     */
     fun claim(driver: User) {
         if (!isClaimable) {
             throw BusinessException(DeliveryException.DELIVERY_PLAN_ALREADY_CLAIMED)
@@ -182,12 +177,6 @@ class DeliveryPlan private constructor(
         this.assignedAt = LocalDateTime.now()
     }
 
-    /**
-     * 배송 시작 전에만 수령한 업무를 다시 미배정 상태로 되돌린다.
-     *
-     * 반납된 업무는 우선권 윈도우를 다시 열지 않고 즉시 전체 공개한다.
-     * 한 번 추천받은 기사가 반납을 반복하며 같은 업무를 계속 선점하는 것을 막기 위해서다.
-     */
     fun release() {
         if (!status.isReady()) {
             throw BusinessException(DeliveryException.DELIVERY_PLAN_NOT_RELEASABLE)
@@ -258,7 +247,6 @@ class DeliveryPlan private constructor(
         }
     }
 
-    /** 아직 출발하지 않은 계획(미배정 OPEN 또는 배정된 READY)만 배송지/일정 편집을 허용한다. */
     private fun ensureEditable() {
         if (!status.isOpen() && !status.isReady()) {
             throw BusinessException(DeliveryException.DELIVERY_INVALID_PLAN_STATUS_CHANGE)

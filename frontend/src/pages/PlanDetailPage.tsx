@@ -301,8 +301,8 @@ export function PlanDetailPage() {
             <div>
               <h2>배송 기사 추천</h2>
               <p>
-                거리·업무량·위험 배송지·위치 신선도를 가중합해 적합도를 계산합니다.
-                추천은 참고용 랭킹이며 실제 수령은 기사가 직접 합니다.
+                거리·업무량·위험 배송지·위치 신선도 기준으로 적격 후보를 고르고,
+                AI가 최종 적합도와 근거를 제안합니다. 실제 수령은 기사가 직접 합니다.
               </p>
             </div>
             <button
@@ -342,7 +342,10 @@ export function PlanDetailPage() {
                           <strong>{maskName(driver.driverName)}</strong>
                           <span className="recommendation-login">({maskLoginId(driver.driverLoginId)})</span>
                         </div>
-                        <span className="recommendation-score">{driver.score}점</span>
+                        <span className="recommendation-score">
+                          {driver.score}점
+                          {driver.baseScore !== null && ` · 기준 ${driver.baseScore}점`}
+                        </span>
                       </div>
                       <div className="recommendation-meter" aria-hidden="true">
                         <span style={{ width: `${driver.score}%` }} />

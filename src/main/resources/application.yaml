@@ -12,6 +12,17 @@ spring:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
 
+route-optimizer:
+  remote:
+    enabled: ${ROUTE_OPTIMIZER_REMOTE_ENABLED:true}
+    # 네트워크 비교를 위해 기본은 UDP. HTTP로 비교할 때만 transport=http로 덮어쓴다.
+    transport: ${ROUTE_OPTIMIZER_REMOTE_TRANSPORT:udp}
+    base-url: ${ROUTE_OPTIMIZER_REMOTE_URL:http://localhost:8091}
+    udp-host: ${ROUTE_OPTIMIZER_UDP_HOST:localhost}
+    udp-port: ${ROUTE_OPTIMIZER_UDP_PORT:8092}
+    connect-timeout: ${ROUTE_OPTIMIZER_REMOTE_CONNECT_TIMEOUT:200ms}
+    read-timeout: ${ROUTE_OPTIMIZER_REMOTE_READ_TIMEOUT:500ms}
+
 weather:
   api:
     key: ${WEATHER_API_KEY}
@@ -44,6 +55,9 @@ delivery:
     enabled: ${DELIVERY_PRIORITY_WINDOW_ENABLED:true}
     seconds: ${DELIVERY_PRIORITY_WINDOW_SECONDS:60}
     driver-count: ${DELIVERY_PRIORITY_WINDOW_DRIVERS:3}
+    # 데모에서는 AI 미사용/실패 시 결정적 스코어 상위 기사로 우선권을 부여한다.
+    deterministic-fallback: ${DELIVERY_PRIORITY_WINDOW_DETERMINISTIC_FALLBACK:true}
+
   recommendation:
     # 추천 결과로 돌려줄 기사 수
     limit: ${DELIVERY_RECOMMENDATION_LIMIT:3}
@@ -51,6 +65,16 @@ delivery:
     location-stale-minutes: ${DELIVERY_RECOMMENDATION_STALE_MINUTES:30}
     # 거리 정규화 상한(m). 이 값 이상이면 거리 점수는 0점이 된다.
     max-distance-meters: ${DELIVERY_RECOMMENDATION_MAX_DISTANCE:30000}
+    ai:
+      # AI 우선권 추천은 부가 기능이다. 비활성·장애·무효 응답이면 처음부터 전체 공개한다.
+      enabled: ${DELIVERY_AI_RECOMMENDATION_ENABLED:false}
+      webhook-url: ${DELIVERY_AI_RECOMMENDATION_WEBHOOK_URL:}
+      secret: ${DELIVERY_AI_RECOMMENDATION_SECRET:}
+      connect-timeout: ${DELIVERY_AI_RECOMMENDATION_CONNECT_TIMEOUT:500ms}
+      read-timeout: ${DELIVERY_AI_RECOMMENDATION_READ_TIMEOUT:2s}
+      candidate-pool-size: ${DELIVERY_AI_RECOMMENDATION_CANDIDATE_POOL_SIZE:20}
+      max-reasons-per-driver: 3
+      max-reason-length: 200
     weights:
       distance: 0.40
       active-plans: 0.20
@@ -80,5 +104,3 @@ management:
           - 200ms
           - 500ms
           - 1s
-
-

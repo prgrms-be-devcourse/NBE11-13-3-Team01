@@ -8,15 +8,10 @@ import kotlin.math.pow
 import kotlin.math.sin
 import kotlin.math.sqrt
 
-/**
- * 좌표 기반 직선 거리 및 예상 이동 시간 계산.
- * 다음 배송지 추천과 배송 기사 추천이 동일한 기준을 사용하도록 한 곳에 모았다.
- */
 object GeoDistance {
     private const val EARTH_RADIUS_METERS = 6_371_000.0
     private const val DEGREES_TO_RADIANS = PI / 180.0
 
-    /** 도심 평균 주행 속도 가정값 (30km/h) */
     const val DEFAULT_SPEED_METERS_PER_SECOND = 30_000.0 / 3_600.0
 
     fun haversineMeters(

@@ -11,6 +11,10 @@ import com.example.delivery_project.domain.repository.WeatherRepository
 import com.example.delivery_project.service.component.recommendation.DriverCandidateLoader
 import com.example.delivery_project.service.component.recommendation.DriverRecommender
 import com.example.delivery_project.service.component.recommendation.PriorityWindowAssigner
+import com.example.delivery_project.service.component.recommendation.AiDriverRecommendationEngine
+import com.example.delivery_project.service.component.recommendation.AiRecommendationGateway
+import io.micrometer.core.instrument.MeterRegistry
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import com.example.delivery_project.service.component.route.DijkstraRouteOptimizer
 import com.example.delivery_project.service.component.route.RouteOptimizer
 import org.assertj.core.api.Assertions.assertThat
@@ -48,6 +52,8 @@ class ComponentWiringTest {
             assertThat(context).hasSingleBean(DriverRecommender::class.java)
             assertThat(context).hasSingleBean(DriverCandidateLoader::class.java)
             assertThat(context).hasSingleBean(PriorityWindowAssigner::class.java)
+            assertThat(context).hasSingleBean(AiDriverRecommendationEngine::class.java)
+            assertThat(context).hasSingleBean(AiRecommendationGateway::class.java)
 
             assertThat(context.getBean(RouteOptimizer::class.java))
                 .isInstanceOf(DijkstraRouteOptimizer::class.java)
@@ -83,6 +89,9 @@ class ComponentWiringTest {
 
         @Bean
         fun deliveryClaimProperties(): DeliveryClaimProperties = DeliveryClaimProperties()
+
+        @Bean
+        fun meterRegistry(): MeterRegistry = SimpleMeterRegistry()
 
         @Bean
         fun userRepository(): UserRepository = mock(UserRepository::class.java)

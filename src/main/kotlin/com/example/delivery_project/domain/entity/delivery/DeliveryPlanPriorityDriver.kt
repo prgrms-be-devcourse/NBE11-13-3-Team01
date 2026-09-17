@@ -13,12 +13,6 @@ import jakarta.persistence.ManyToOne
 import jakarta.persistence.Table
 import jakarta.persistence.UniqueConstraint
 
-/**
- * 배송 업무 등록 시 추천 상위 기사에게 부여한 우선 수령 권한.
- *
- * `delivery_plan.public_at` 이전에는 이 목록에 있는 기사만 해당 업무를 수령할 수 있고,
- * 공개 시각이 지나면 전체 기사가 선착순으로 경쟁한다.
- */
 @Entity
 @Table(
     name = "delivery_plan_priority_driver",
@@ -51,7 +45,6 @@ class DeliveryPlanPriorityDriver private constructor(
     var driver: User = driver
         protected set
 
-    /** 1 부터 시작하는 추천 순위. 우선권 안에서도 순위를 남겨 근거를 설명할 수 있게 한다. */
     @field:Column(nullable = false)
     var priorityRank: Int = priorityRank
         protected set

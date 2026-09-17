@@ -34,10 +34,6 @@ interface UserRepository : JpaRepository<User, Long> {
 
     fun findAllByRoleAndDeletedAtIsNullOrderByNameAsc(role: Role): List<User>
 
-    /**
-     * 기사별 현재 보유 업무량 집계. 배송 기사 추천 스코어링의 입력값이다.
-     * 진행 중(READY / DELIVERING) 계획만 집계하며, 업무가 없는 기사도 0으로 포함된다.
-     */
     @Query(
         value = """
         SELECT

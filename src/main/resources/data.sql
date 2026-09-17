@@ -56,7 +56,7 @@ VALUES (
 
 -- ============================================================
 -- 배송 기사 테스트 계정
--- loginId: user1, user2, user3
+-- loginId: user1 ~ user10
 -- password: 1234
 -- ============================================================
 
@@ -83,6 +83,48 @@ VALUES
         'user3',
         '$2y$10$Z3CLfcNpZ2VZag4YoSHUj.Ku3NmM6ZFhMywRmazbw1nmBi4KTO4hi',
         '기사3',
+        'ROLE_DELIVERY_DRIVER'
+    ),
+    (
+        'user4',
+        '$2y$10$Z3CLfcNpZ2VZag4YoSHUj.Ku3NmM6ZFhMywRmazbw1nmBi4KTO4hi',
+        '기사4',
+        'ROLE_DELIVERY_DRIVER'
+    ),
+    (
+        'user5',
+        '$2y$10$Z3CLfcNpZ2VZag4YoSHUj.Ku3NmM6ZFhMywRmazbw1nmBi4KTO4hi',
+        '기사5',
+        'ROLE_DELIVERY_DRIVER'
+    ),
+    (
+        'user6',
+        '$2y$10$Z3CLfcNpZ2VZag4YoSHUj.Ku3NmM6ZFhMywRmazbw1nmBi4KTO4hi',
+        '기사6',
+        'ROLE_DELIVERY_DRIVER'
+    ),
+    (
+        'user7',
+        '$2y$10$Z3CLfcNpZ2VZag4YoSHUj.Ku3NmM6ZFhMywRmazbw1nmBi4KTO4hi',
+        '기사7',
+        'ROLE_DELIVERY_DRIVER'
+    ),
+    (
+        'user8',
+        '$2y$10$Z3CLfcNpZ2VZag4YoSHUj.Ku3NmM6ZFhMywRmazbw1nmBi4KTO4hi',
+        '기사8',
+        'ROLE_DELIVERY_DRIVER'
+    ),
+    (
+        'user9',
+        '$2y$10$Z3CLfcNpZ2VZag4YoSHUj.Ku3NmM6ZFhMywRmazbw1nmBi4KTO4hi',
+        '기사9',
+        'ROLE_DELIVERY_DRIVER'
+    ),
+    (
+        'user10',
+        '$2y$10$Z3CLfcNpZ2VZag4YoSHUj.Ku3NmM6ZFhMywRmazbw1nmBi4KTO4hi',
+        '기사10',
         'ROLE_DELIVERY_DRIVER'
     );
 
@@ -123,7 +165,15 @@ INSERT INTO driver_location (driver_id, latitude, longitude, updated_at)
 VALUES
     (2, 37.5665, 126.9780, CURRENT_TIMESTAMP(6)),
     (3, 37.5651, 126.9895, CURRENT_TIMESTAMP(6)),
-    (4, 37.5700, 126.9920, CURRENT_TIMESTAMP(6));
+    (4, 37.5700, 126.9920, CURRENT_TIMESTAMP(6)),
+    -- 기사4~10은 서울역에서 5~25km 떨어진 서울 각 권역에 배치한다.
+    ((SELECT id FROM users WHERE login_id = 'user4'), 37.4947, 126.8874, CURRENT_TIMESTAMP(6)), -- 구로구
+    ((SELECT id FROM users WHERE login_id = 'user5'), 37.5172, 127.0473, CURRENT_TIMESTAMP(6)), -- 강남구
+    ((SELECT id FROM users WHERE login_id = 'user6'), 37.5145, 127.1059, CURRENT_TIMESTAMP(6)), -- 송파구
+    ((SELECT id FROM users WHERE login_id = 'user7'), 37.6543, 127.0568, CURRENT_TIMESTAMP(6)), -- 노원구
+    ((SELECT id FROM users WHERE login_id = 'user8'), 37.5638, 126.9134, CURRENT_TIMESTAMP(6)), -- 마포구
+    ((SELECT id FROM users WHERE login_id = 'user9'), 37.5507, 126.8495, CURRENT_TIMESTAMP(6)), -- 강서구
+    ((SELECT id FROM users WHERE login_id = 'user10'), 37.4784, 126.9516, CURRENT_TIMESTAMP(6)); -- 관악구
 
 -- ------------------------------------------------------------
 -- delivery_plan
@@ -261,9 +311,9 @@ CREATE TABLE weather (
 
 -- ============================================================
 -- 배송 계획 테스트 데이터
--- 기사별 배송지 10곳 구성
+-- 계획별로 서로 다른 상태·배송량을 확인할 수 있도록 구성한다.
 -- 1001: 배송 준비 10곳
--- 1002: 배송 준비 10곳 (전체 27박스 / 삽입 시점 2시간 뒤 출발)
+-- 1002: 배송 준비 10곳 (중간 배송량 / 삽입 시점 2시간 뒤 출발)
 -- 1003: 배송 완료 10곳
 -- 1004: 기사3 배송 준비 10곳 (1002와 동일 시각 출발)
 -- ============================================================
@@ -531,40 +581,40 @@ VALUES
     (1129, '유리병 세트', 'FRAGILE', 23),
     (1130, '캠핑용품', 'NORMAL', 43),
 
-    (1201, '신선 우유', 'REFRIGERATED', 2),
-    (1201, '샐러드', 'REFRIGERATED', 30),
-    (1202, '사무용품', 'NORMAL', 5),
-    (1203, '냉동 도시락', 'FROZEN', 3),
-    (1204, '유리 화병', 'FRAGILE', 1),
-    (1205, '과일 선물세트', 'REFRIGERATED', 2),
-    (1206, '세제 묶음', 'NORMAL', 4),
-    (1207, '캠핑용품', 'NORMAL', 2),
-    (1208, '유아 식품', 'REFRIGERATED', 3),
-    (1209, '냉동 육류', 'FROZEN', 1),
-    (1210, '조명 기구', 'FRAGILE', 4),
-    (1301, '도서', 'NORMAL', 2),
-    (1302, '케이크', 'REFRIGERATED', 1),
-    (1303, '냉동식품', 'FROZEN', 3),
-    (1304, '의류', 'NORMAL', 2),
-    (1304, '냉동식품', 'FROZEN', 5),
-    (1305, '요거트 세트', 'REFRIGERATED', 4),
-    (1306, '냉동 해산물', 'FROZEN', 1),
-    (1307, '유리 식기', 'FRAGILE', 3),
-    (1308, '휴지 묶음', 'NORMAL', 2),
-    (1309, '치즈 세트', 'REFRIGERATED', 1),
-    (1310, '전자기기', 'FRAGILE', 5),
-    (1401, '생필품 세트', 'NORMAL', 2),
-    (1402, '신선 채소', 'REFRIGERATED', 3),
-    (1403, '디저트 세트', 'REFRIGERATED', 1),
-    (1404, '냉동 간편식', 'FROZEN', 4),
-    (1405, '유리 보관용기', 'FRAGILE', 2),
-    (1406, '사무용품 박스', 'NORMAL', 5),
-    (1407, '아이스크림', 'FROZEN', 1),
-    (1408, '화장품 세트', 'FRAGILE', 2),
-    (1409, '유제품', 'REFRIGERATED', 3),
-    (1410, '반려동물 사료', 'NORMAL', 2);
+    (1201, '신선 우유', 'REFRIGERATED', 12),
+    (1201, '샐러드', 'REFRIGERATED', 18),
+    (1202, '사무용품', 'NORMAL', 10),
+    (1203, '냉동 도시락', 'FROZEN', 8),
+    (1204, '유리 화병', 'FRAGILE', 6),
+    (1205, '과일 선물세트', 'REFRIGERATED', 9),
+    (1206, '세제 묶음', 'NORMAL', 14),
+    (1207, '캠핑용품', 'NORMAL', 7),
+    (1208, '유아 식품', 'REFRIGERATED', 11),
+    (1209, '냉동 육류', 'FROZEN', 8),
+    (1210, '조명 기구', 'FRAGILE', 13),
+    (1301, '도서', 'NORMAL', 6),
+    (1302, '케이크', 'REFRIGERATED', 4),
+    (1303, '냉동식품', 'FROZEN', 9),
+    (1304, '의류', 'NORMAL', 7),
+    (1304, '냉동식품', 'FROZEN', 11),
+    (1305, '요거트 세트', 'REFRIGERATED', 8),
+    (1306, '냉동 해산물', 'FROZEN', 5),
+    (1307, '유리 식기', 'FRAGILE', 7),
+    (1308, '휴지 묶음', 'NORMAL', 10),
+    (1309, '치즈 세트', 'REFRIGERATED', 5),
+    (1310, '전자기기', 'FRAGILE', 8),
+    (1401, '생필품 세트', 'NORMAL', 7),
+    (1402, '신선 채소', 'REFRIGERATED', 9),
+    (1403, '디저트 세트', 'REFRIGERATED', 5),
+    (1404, '냉동 간편식', 'FROZEN', 12),
+    (1405, '유리 보관용기', 'FRAGILE', 6),
+    (1406, '사무용품 박스', 'NORMAL', 10),
+    (1407, '아이스크림', 'FROZEN', 5),
+    (1408, '화장품 세트', 'FRAGILE', 7),
+    (1409, '유제품', 'REFRIGERATED', 9),
+    (1410, '반려동물 사료', 'NORMAL', 8);
 
--- 모든 배송지에 1:1 위험도 평가 생성
+-- 배송지별 위험도 평가
 INSERT INTO risk_assessment (
     id,
     delivery_stop_id,
@@ -703,9 +753,3 @@ VALUES
     (2408, 'HEAVY_RAIN', '폭우'),
     (2408, 'WEATHER_WARNING', '기상 특보'),
     (2409, 'HEAT_WAVE', '폭염');
-
-select * from risk_factor;
-select * from risk_assessment;
-select * from delivery_stop;
-select * from delivery_plan;
-select * from weather;
